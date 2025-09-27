@@ -5,12 +5,18 @@ import os
 from datetime import datetime, timedelta
 import uuid
 import io
-# PDF generation imports
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-from reportlab.lib.units import inch
+
+# PDF generation imports (optional)
+try:
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
+    print("PDF generation not available - reportlab not installed")
 
 # Firebase imports
 try:
@@ -760,30 +766,18 @@ def get_daily_totals_api():
 @app.route('/api/generate-report', methods=['POST'])
 def generate_pdf_report():
     """Generate PDF report for specified date range"""
+    
+    # Check if PDF generation is available
+    if not PDF_AVAILABLE:
+        return jsonify({
+            'error': 'PDF generation not available. reportlab package not installed.',
+            'message': 'Please install reportlab package to generate PDF reports'
+        }), 503
+    
     try:
         data = request.get_json()
         start_date = data.get('start_date', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
         end_date = data.get('end_date', datetime.now().strftime('%Y-%m-%d'))
-        
-        # Create PDF in memory
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        styles = getSampleStyleSheet()
-        story = []
-        
-        # Title
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=24,
-            spaceAfter=30,
-            textColor=colors.HexColor('#27AE60'),
-            alignment=1  # Center
-        )
-        story.append(Paragraph("Green Heaven Restaurant", title_style))
-        story.append(Paragraph("Business Report", styles['Heading2']))
-        story.append(Paragraph(f"Period: {start_date} to {end_date}", styles['Normal']))
-        story.append(Spacer(1, 20))
         
         # Collect data for the period
         digital_orders = load_data('orders') or []
@@ -808,6 +802,33 @@ def generate_pdf_report():
                 order_date = datetime.strptime(order['date'], '%Y-%m-%d')
                 if start_dt.date() <= order_date.date() <= end_dt.date():
                     filtered_manual.append(order)
+        
+        # Generate PDF with all the imports inside the function
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        
+        # Create PDF in memory
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            textColor=colors.HexColor('#27AE60'),
+            alignment=1  # Center
+        )
+        story.append(Paragraph("Green Heaven Restaurant", title_style))
+        story.append(Paragraph("Business Report", styles['Heading2']))
+        story.append(Paragraph(f"Period: {start_date} to {end_date}", styles['Normal']))
+        story.append(Spacer(1, 20))
         
         # Summary Statistics
         total_digital_revenue = sum(order.get('total', 0) for order in filtered_digital)
