@@ -1,15 +1,16 @@
-# 🚀 Render Deployment Guide - Green Heaven Restaurant
+# 🚀 Render Deployment Guide - Green Heaven Restaurant (PRODUCTION)
 
 ## 📋 Pre-Deployment Checklist
 
 ### ✅ Firebase Setup Complete
 - Firebase project: `green-heaven-c2856` 
-- Service account key downloaded
-- Firestore database needs to be enabled (see step 4 below)
+- Service account key configured
+- Firestore database enabled
 
 ### ✅ Repository Ready  
 - All code pushed to GitHub: `https://github.com/dinuthfernandez/green-heaven.git`
-- Configuration files created (render.yaml, requirements.txt, runtime.txt)
+- Production configuration files created
+- Full feature set enabled
 
 ---
 
@@ -19,11 +20,11 @@
 1. Go to https://render.com and sign in/register
 2. Click "New" → "Web Service"
 3. Connect GitHub and select `dinuthfernandez/green-heaven`
-4. Use these settings:
+4. Use these PRODUCTION settings:
    - **Name**: `green-heaven-restaurant`
    - **Environment**: Python
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app`
+   - **Build Command**: `pip install --upgrade pip setuptools wheel && pip install -r requirements.txt`
+   - **Start Command**: `gunicorn --worker-class gevent -w 1 --bind 0.0.0.0:$PORT app:app --timeout 120`
 
 ### 2. Configure Environment Variables
 In Render Dashboard → Environment Variables, add:
