@@ -3,7 +3,7 @@ services:
     name: green-heaven
     env: python
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements-minimal.txt
-    startCommand: gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app
+    startCommand: gunicorn -w 1 --bind 0.0.0.0:$PORT app:app --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
