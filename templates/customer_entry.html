@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Green Heaven - Welcome</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/customer-entry.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="entry-container">
+        <div class="welcome-card">
+            <div class="logo-section">
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Green Heaven Logo">
+                </div>
+                <h1>Green Heaven</h1>
+                <p class="location">Katuneriya, Sri Lanka</p>
+                <div class="tagline">
+                    <p>Where Nature Becomes Flavor</p>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Welcome to Green Heaven!</h2>
+                <p class="instructions">Please provide your details to get started</p>
+
+                <form id="entry-form" action="/customer" method="GET">
+                    <div class="form-group">
+                        <label for="customer-name">
+                            <i class="fas fa-user"></i>
+                            Your Name
+                        </label>
+                        <input type="text" 
+                               id="customer-name" 
+                               name="name" 
+                               placeholder="Enter your name" 
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="table-number">
+                            <i class="fas fa-table"></i>
+                            Table Number
+                        </label>
+                        <select id="table-number" name="table" required>
+                            <option value="">Select your table</option>
+                            <option value="1">Table 1</option>
+                            <option value="2">Table 2</option>
+                            <option value="3">Table 3</option>
+                            <option value="4">Table 4</option>
+                            <option value="5">Table 5</option>
+                            <option value="6">Table 6</option>
+                            <option value="7">Table 7</option>
+                            <option value="8">Table 8</option>
+                            <option value="9">Table 9</option>
+                            <option value="10">Table 10</option>
+                            <option value="11">Table 11</option>
+                            <option value="12">Table 12</option>
+                            <option value="VIP1">VIP Table 1</option>
+                            <option value="VIP2">VIP Table 2</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="continue-btn">
+                        <span>Continue to Menu</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+
+            <div class="features-section">
+                <div class="feature">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>Digital Menu & Ordering</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-bell-concierge"></i>
+                    <span>Call Staff Service</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-clock"></i>
+                    <span>Real-time Order Updates</span>
+                </div>
+            </div>
+
+            <div class="footer-section">
+                <p class="hours">Open Daily: 10:00 AM - 11:00 PM</p>
+                <p class="contact">
+                    <i class="fas fa-phone"></i> +94 77 123 4567 |
+                    <i class="fas fa-envelope"></i> info@greenheaven.lk
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="background-pattern"></div>
+
+    <script>
+        // Form validation and smooth transitions
+        document.getElementById('entry-form').addEventListener('submit', function(e) {
+            const name = document.getElementById('customer-name').value.trim();
+            const table = document.getElementById('table-number').value;
+            
+            if (!name || !table) {
+                e.preventDefault();
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            // Add loading state
+            const btn = document.querySelector('.continue-btn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            btn.disabled = true;
+        });
+
+        // Add some animation to the welcome card
+        window.addEventListener('load', function() {
+            document.querySelector('.welcome-card').classList.add('loaded');
+        });
+    </script>
+</body>
+</html>

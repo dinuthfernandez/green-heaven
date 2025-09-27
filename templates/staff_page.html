@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Green Heaven - Staff Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/staff.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="brand-section">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Green Heaven Logo" class="logo">
+                    <div class="brand-text">
+                        <h1>Green Heaven</h1>
+                        <p>Katuneriya, Sri Lanka</p>
+                        <small class="tagline">Where Nature Becomes Flavor</small>
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="alert-counter">
+                    <i class="fas fa-bell"></i>
+                    <span id="alert-count">{{ alerts|length }}</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Table Management Section -->
+            <section class="tables-section">
+                <h2><i class="fas fa-table"></i> Table Management</h2>
+                <div class="tables-grid" id="tables-grid">
+                    {% for table in tables %}
+                    <div class="table-card table-{{ table.status }}" data-table="{{ table.number }}">
+                        <div class="table-header">
+                            <div class="table-number">
+                                <i class="fas fa-{{ 'crown' if 'VIP' in table.number else 'table' }}"></i>
+                                <span>{{ table.number }}</span>
+                            </div>
+                            <div class="table-status-indicator"></div>
+                        </div>
+                        
+                        <div class="table-content">
+                            {% if table.customer_name %}
+                                <div class="customer-info">
+                                    <strong>{{ table.customer_name }}</strong>
+                                    {% if table.last_activity %}
+                                    <small>Active: {{ table.last_activity }}</small>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if table.orders %}
+                                <div class="table-orders">
+                                    <div class="orders-summary">
+                                        <span>{{ table.orders|length }} order{{ 's' if table.orders|length != 1 else '' }}</span>
+                                        <span class="total-amount">LKR {{ "%.2f"|format(table.total_amount) }}</span>
+                                    </div>
+                                    <div class="order-statuses">
+                                        {% for order in table.orders %}
+                                        <span class="order-status-badge status-{{ order.status }}">{{ order.status.title() }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if table.alerts %}
+                                <div class="table-alerts">
+                                    <i class="fas fa-bell"></i>
+                                    <span>{{ table.alerts|length }} alert{{ 's' if table.alerts|length != 1 else '' }}</span>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="empty-table">
+                                    <i class="fas fa-chair"></i>
+                                    <span>Available</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if table.status != 'empty' %}
+                        <div class="table-actions">
+                            {% if table.alerts %}
+                            <button class="btn-clear-alerts" onclick="clearTableAlerts('{{ table.number }}')">
+                                <i class="fas fa-bell-slash"></i>
+                            </button>
+                            {% endif %}
+                            <button class="btn-view-details" onclick="viewTableDetails('{{ table.number }}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Quick Stats Section -->
+            <section class="quick-stats-section">
+                <h2><i class="fas fa-chart-bar"></i> Quick Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon occupied">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="occupied-tables">{{ tables|selectattr("status", "equalto", "occupied")|list|length + tables|selectattr("status", "equalto", "needs_attention")|list|length }}</span>
+                            <span class="stat-label">Occupied Tables</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon available">
+                            <i class="fas fa-chair"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="available-tables">{{ tables|selectattr("status", "equalto", "empty")|list|length }}</span>
+                            <span class="stat-label">Available Tables</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon alerts">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="tables-with-alerts">{{ tables|selectattr("status", "equalto", "needs_attention")|list|length }}</span>
+                            <span class="stat-label">Need Attention</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon revenue">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="daily-revenue">LKR {{ "%.0f"|format(tables|sum(attribute='total_amount')) }}</span>
+                            <span class="stat-label">Active Revenue</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <a href="/menu-management" class="action-btn">
+                        <i class="fas fa-utensils"></i>
+                        <span>Manage Menu</span>
+                    </a>
+                    <button class="action-btn" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Refresh Data</span>
+                    </button>
+                    <button class="action-btn" onclick="clearAllAlerts()">
+                        <i class="fas fa-bell-slash"></i>
+                        <span>Clear All Alerts</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Alerts Section -->
+            <section class="alerts-section">
+                <h2><i class="fas fa-exclamation-triangle"></i> Staff Alerts</h2>
+                <div class="alerts-container" id="alerts-container">
+                    {% for alert in alerts %}
+                    <div class="alert-item" data-alert-id="{{ alert.id }}">
+                        <div class="alert-content">
+                            <h4>Table {{ alert.table_number }} - {{ alert.customer_name }}</h4>
+                            <p>Requesting staff assistance</p>
+                            <span class="alert-time">{{ alert.timestamp }}</span>
+                        </div>
+                        <button class="dismiss-btn" onclick="dismissAlert('{{ alert.id }}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Orders Section -->
+            <section class="orders-section">
+                <h2><i class="fas fa-clipboard-list"></i> Orders</h2>
+                
+                <!-- Order Statistics -->
+                <div class="order-stats">
+                    <div class="stat-item">
+                        <span class="stat-number" id="total-orders">{{ orders|length }}</span>
+                        <span class="stat-label">Total Orders</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="pending-orders">{{ orders|selectattr("status", "equalto", "pending")|list|length }}</span>
+                        <span class="stat-label">Pending</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="preparing-orders">{{ orders|selectattr("status", "equalto", "preparing")|list|length }}</span>
+                        <span class="stat-label">Preparing</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="ready-orders">{{ orders|selectattr("status", "equalto", "ready")|list|length }}</span>
+                        <span class="stat-label">Ready</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="completed-orders">{{ orders|selectattr("status", "equalto", "completed")|list|length }}</span>
+                        <span class="stat-label">Completed</span>
+                    </div>
+                </div>
+                
+                <!-- Order Filters -->
+                <div class="order-filters">
+                    <button class="filter-btn active" data-status="all">All Orders</button>
+                    <button class="filter-btn" data-status="pending">Pending</button>
+                    <button class="filter-btn" data-status="preparing">Preparing</button>
+                    <button class="filter-btn" data-status="ready">Ready</button>
+                    <button class="filter-btn" data-status="completed">Completed</button>
+                </div>
+                
+                <div class="orders-container" id="orders-container">
+                    {% for order in orders %}
+                    <div class="order-item" data-order-id="{{ order.id }}">
+                        <div class="order-header">
+                            <h4>Table {{ order.table_number }} - {{ order.customer_name }}</h4>
+                            <span class="order-status status-{{ order.status }}">{{ order.status.title() }}</span>
+                        </div>
+                        <div class="order-items">
+                            {% for item in order['items'] %}
+                            <div class="order-item-detail">
+                                <span>{{ item.quantity }}x {{ item.name }}</span>
+                                <span>LKR {{ "%.2f"|format(item.price * item.quantity) }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="order-footer">
+                            <span class="order-total">Total: LKR {{ "%.2f"|format(order.total) }}</span>
+                            <span class="order-time">{{ order.timestamp }}</span>
+                        </div>
+                        <div class="order-actions">
+                            {% if order.status == 'pending' %}
+                            <button onclick="updateOrderStatus('{{ order.id }}', 'preparing')" class="btn-preparing">
+                                <i class="fas fa-play"></i> Start Preparing
+                            </button>
+                            {% elif order.status == 'preparing' %}
+                            <button onclick="updateOrderStatus('{{ order.id }}', 'ready')" class="btn-ready">
+                                <i class="fas fa-check"></i> Ready to Serve
+                            </button>
+                            {% elif order.status == 'ready' %}
+                            <button onclick="updateOrderStatus('{{ order.id }}', 'completed')" class="btn-completed">
+                                <i class="fas fa-check-double"></i> Mark as Served
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Menu Management Section -->
+            <section class="menu-section">
+                <h2><i class="fas fa-utensils"></i> Menu Management</h2>
+                
+                <!-- Add New Item Form -->
+                <div class="add-item-form">
+                    <h3>Add New Menu Item</h3>
+                    <form id="add-menu-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Item Name</label>
+                                <input type="text" id="item-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="item-category">
+                                    <option value="Appetizers">Appetizers</option>
+                                    <option value="Main Course">Main Course</option>
+                                    <option value="Desserts">Desserts</option>
+                                    <option value="Beverages">Beverages</option>
+                                    <option value="Sri Lankan Specials">Sri Lankan Specials</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Price (LKR)</label>
+                                <input type="number" id="item-price" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Image URL</label>
+                                <input type="url" id="item-image">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="item-description" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn-add">
+                            <i class="fas fa-plus"></i> Add Menu Item
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Current Menu Items -->
+                <div class="current-menu">
+                    <h3>Current Menu Items</h3>
+                    <div class="menu-grid" id="menu-grid">
+                        {% for item in menu_items %}
+                        <div class="menu-item-card">
+                            {% if item.image %}
+                            <img src="{{ item.image }}" alt="{{ item.name }}" class="menu-item-image">
+                            {% else %}
+                            <div class="menu-item-placeholder">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            {% endif %}
+                            <div class="menu-item-info">
+                                <h4>{{ item.name }}</h4>
+                                <p class="menu-item-category">{{ item.category }}</p>
+                                <p class="menu-item-description">{{ item.description }}</p>
+                                <span class="menu-item-price">LKR {{ "%.2f"|format(item.price) }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Manual Order Management Section -->
+            <section class="manual-orders-section">
+                <h2><i class="fas fa-edit"></i> Manual Order Management</h2>
+                
+                <!-- Add Manual Order Form -->
+                <div class="add-manual-order-form">
+                    <h3>Add Manual Order</h3>
+                    <form id="add-manual-order-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Customer Name</label>
+                                <input type="text" id="manual-customer-name" value="Walk-in Customer">
+                            </div>
+                            <div class="form-group">
+                                <label>Table Number</label>
+                                <input type="text" id="manual-table-number" value="Takeout">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label>Items Description</label>
+                                <textarea id="manual-items-description" placeholder="Describe the items ordered..." rows="3" required></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Total Amount (LKR)</label>
+                                <input type="number" id="manual-total" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Notes</label>
+                                <input type="text" id="manual-notes" placeholder="Optional notes...">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-plus"></i> Add Manual Order
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Manual Orders List -->
+                <div class="manual-orders-list">
+                    <h3>Today's Manual Orders</h3>
+                    <div id="manual-orders-container">
+                        <!-- Manual orders will be loaded here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Business Reports Section -->
+            <section class="reports-section">
+                <h2><i class="fas fa-chart-bar"></i> Business Reports</h2>
+                
+                <!-- Daily Totals Display -->
+                <div class="daily-totals">
+                    <h3>Today's Summary</h3>
+                    <div class="totals-grid" id="daily-totals">
+                        <!-- Daily totals will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- PDF Report Generation -->
+                <div class="report-generation">
+                    <h3>Generate PDF Report</h3>
+                    <form id="generate-report-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Start Date</label>
+                                <input type="date" id="report-start-date" required>
+                            </div>
+                            <div class="form-group">
+                                <label>End Date</label>
+                                <input type="date" id="report-end-date" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-success">
+                            <i class="fas fa-file-pdf"></i> Generate PDF Report
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Audio for alerts -->
+    <audio id="alert-sound" preload="auto">
+        <source src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAU1wZWcgTGF5ZXIgMy4wCg==" type="audio/mpeg">
+    </audio>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/staff.js') }}"></script>
+</body>
+</html>

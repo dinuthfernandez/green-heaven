@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Green Heaven - Menu Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/menu-management.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="menu-management">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="brand-section">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Green Heaven Logo" class="logo">
+                        <div class="brand-text">
+                            <h1>Green Heaven</h1>
+                            <p>Menu Management</p>
+                            <small class="tagline">Where Nature Becomes Flavor</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <a href="/staff" class="nav-btn">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back to Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Add New Item Section -->
+            <section class="add-item-section">
+                <h2><i class="fas fa-plus-circle"></i> Add New Menu Item</h2>
+                
+                <form id="add-menu-form" enctype="multipart/form-data">
+                    <div class="form-container">
+                        <!-- Image Upload Section -->
+                        <div class="image-upload-section">
+                            <div class="image-preview" id="image-preview">
+                                <div class="upload-placeholder">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Click to upload image</p>
+                                    <small>JPG, PNG, GIF up to 5MB</small>
+                                </div>
+                                <input type="file" id="item-image" accept="image/*" hidden>
+                                <img id="preview-img" style="display: none;">
+                                <div class="image-actions" id="image-actions" style="display: none;">
+                                    <button type="button" class="btn-remove-image" id="remove-image">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="image-url-option">
+                                <label>Or enter image URL:</label>
+                                <input type="url" id="item-image-url" placeholder="https://example.com/image.jpg">
+                            </div>
+                        </div>
+
+                        <!-- Form Fields -->
+                        <div class="form-fields">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="item-name">
+                                        <i class="fas fa-utensils"></i>
+                                        Item Name *
+                                    </label>
+                                    <input type="text" id="item-name" required placeholder="Enter item name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="item-category">
+                                        <i class="fas fa-tags"></i>
+                                        Category *
+                                    </label>
+                                    <select id="item-category" required>
+                                        <option value="">Select category</option>
+                                        <option value="Appetizers">Appetizers</option>
+                                        <option value="Main Course">Main Course</option>
+                                        <option value="Sri Lankan Specials">Sri Lankan Specials</option>
+                                        <option value="Desserts">Desserts</option>
+                                        <option value="Beverages">Beverages</option>
+                                        <option value="Rice & Curry">Rice & Curry</option>
+                                        <option value="Seafood">Seafood</option>
+                                        <option value="Vegetarian">Vegetarian</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="item-price">
+                                        <i class="fas fa-dollar-sign"></i>
+                                        Price (LKR) *
+                                    </label>
+                                    <input type="number" id="item-price" step="0.01" min="0" required placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label for="item-prep-time">
+                                        <i class="fas fa-clock"></i>
+                                        Prep Time (minutes)
+                                    </label>
+                                    <input type="number" id="item-prep-time" min="1" placeholder="15">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="item-description">
+                                    <i class="fas fa-align-left"></i>
+                                    Description
+                                </label>
+                                <textarea id="item-description" rows="3" placeholder="Describe the dish, ingredients, and preparation style..."></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="item-spicy">
+                                        <span class="checkmark"></span>
+                                        <i class="fas fa-pepper-hot"></i>
+                                        Spicy
+                                    </label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="item-vegetarian">
+                                        <span class="checkmark"></span>
+                                        <i class="fas fa-leaf"></i>
+                                        Vegetarian
+                                    </label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="item-available" checked>
+                                        <span class="checkmark"></span>
+                                        <i class="fas fa-check-circle"></i>
+                                        Available
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn-secondary" onclick="resetForm()">
+                                    <i class="fas fa-undo"></i>
+                                    Reset Form
+                                </button>
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-plus"></i>
+                                    Add Menu Item
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Current Menu Section -->
+            <section class="current-menu-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-list"></i> Current Menu Items</h2>
+                    <div class="menu-stats">
+                        <div class="stat-item">
+                            <span class="stat-number" id="total-items">{{ menu_items|length }}</span>
+                            <span class="stat-label">Total Items</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="available-items">{{ menu_items|selectattr("available", "equalto", true)|list|length if menu_items else 0 }}</span>
+                            <span class="stat-label">Available</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="category-filter">
+                    <button class="filter-btn active" data-category="all">All Items</button>
+                    <button class="filter-btn" data-category="Appetizers">Appetizers</button>
+                    <button class="filter-btn" data-category="Main Course">Main Course</button>
+                    <button class="filter-btn" data-category="Sri Lankan Specials">Sri Lankan Specials</button>
+                    <button class="filter-btn" data-category="Desserts">Desserts</button>
+                    <button class="filter-btn" data-category="Beverages">Beverages</button>
+                </div>
+
+                <!-- Menu Items Grid -->
+                <div class="menu-items-grid" id="menu-items-grid">
+                    {% for item in menu_items %}
+                    <div class="menu-item-card" data-category="{{ item.category }}" data-item-id="{{ item.id }}">
+                        <div class="menu-item-image">
+                            {% if item.image %}
+                            <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+                            {% else %}
+                            <div class="image-placeholder">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            {% endif %}
+                            <div class="item-badges">
+                                {% if item.spicy %}
+                                <span class="badge spicy"><i class="fas fa-pepper-hot"></i></span>
+                                {% endif %}
+                                {% if item.vegetarian %}
+                                <span class="badge vegetarian"><i class="fas fa-leaf"></i></span>
+                                {% endif %}
+                                {% if not item.get('available', true) %}
+                                <span class="badge unavailable"><i class="fas fa-times"></i></span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="menu-item-content">
+                            <div class="item-header">
+                                <h3>{{ item.name }}</h3>
+                                <span class="item-price">LKR {{ "%.2f"|format(item.price) }}</span>
+                            </div>
+                            <p class="item-category">{{ item.category }}</p>
+                            <p class="item-description">{{ item.description or 'No description available' }}</p>
+                            {% if item.get('prep_time') %}
+                            <div class="prep-time">
+                                <i class="fas fa-clock"></i>
+                                <span>{{ item.prep_time }} mins</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="item-actions">
+                            <button class="btn-edit" onclick="editItem('{{ item.id }}')">
+                                <i class="fas fa-edit"></i>
+                                Edit
+                            </button>
+                            <button class="btn-toggle-availability" 
+                                    data-item-id="{{ item.id }}" 
+                                    data-current-availability="{{ item.get('available', true)|string|lower }}"
+                                    onclick="toggleAvailability(this)">
+                                <i class="fas fa-{{ 'eye-slash' if item.get('available', true) else 'eye' }}"></i>
+                                {{ 'Hide' if item.get('available', true) else 'Show' }}
+                            </button>
+                            <button class="btn-delete" onclick="deleteItem('{{ item.id }}')">
+                                <i class="fas fa-trash"></i>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/menu-management.js') }}"></script>
+</body>
+</html>
