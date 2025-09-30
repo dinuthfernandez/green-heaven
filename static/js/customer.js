@@ -518,10 +518,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 100);
         
-        // Load menu items from API for real-time updates (non-blocking)
-        setTimeout(() => {
-            loadMenuItems();
-        }, 200);
+        // Menu items are already loaded from server template - no need to fetch
+        console.log('✅ Menu pre-loaded with', menuItems.length, 'items');
         
         // Initialize socket connection after page is ready (non-blocking)
         setTimeout(() => {

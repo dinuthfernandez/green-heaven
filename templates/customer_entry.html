@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Green Heaven - Welcome</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/customer-entry.css') }}">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
+    <!-- Load Font Awesome asynchronously -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
 </head>
 <body>
     <div class="entry-container">
@@ -98,7 +102,7 @@
     <div class="background-pattern"></div>
 
     <script>
-        // Form validation and smooth transitions
+        // Form validation and smooth transitions with loading state
         document.getElementById('entry-form').addEventListener('submit', function(e) {
             const name = document.getElementById('customer-name').value.trim();
             const table = document.getElementById('table-number').value;
@@ -109,10 +113,47 @@
                 return;
             }
             
-            // Add loading state
+            // Add loading state with progress
             const btn = document.querySelector('.continue-btn');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing your menu...';
             btn.disabled = true;
+            btn.style.opacity = '0.8';
+            
+            // Show progress message after short delay
+            setTimeout(() => {
+                if (btn.disabled) {
+                    btn.innerHTML = '<i class="fas fa-coffee fa-spin"></i> Almost ready...';
+                }
+            }, 1500);
+            
+            // Fallback to restore button if loading takes too long (shouldn't happen normally)
+            setTimeout(() => {
+                if (btn.disabled) {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    console.warn('Loading took longer than expected');
+                }
+            }, 8000);
+        });
+
+        // Preload customer page resources while user is on entry page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Preload the customer CSS to make transition faster
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = '/static/css/customer.css';
+            document.head.appendChild(link);
+            
+            // Preload Socket.IO script
+            const script = document.createElement('link');
+            script.rel = 'prefetch';
+            script.href = '/socket.io/socket.io.js';
+            document.head.appendChild(script);
+            
+            console.log('🚀 Preloading customer page resources...');
         });
 
         // Add some animation to the welcome card

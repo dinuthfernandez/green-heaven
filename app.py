@@ -317,7 +317,7 @@ menu_items = [
         'name': 'Traditional Sri Lankan Curry',
         'description': 'Authentic curry with coconut milk, served with rice and papadum',
         'price': 1250.00,
-        'image': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400',
+        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
         'category': 'Sri Lankan Specials'
     },
     {
@@ -325,7 +325,7 @@ menu_items = [
         'name': 'Chicken Kottu Roti',
         'description': 'Chopped flatbread stir-fried with chicken, vegetables and spices',
         'price': 950.00,
-        'image': 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400',
+        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
         'category': 'Sri Lankan Specials'
     },
     {
@@ -333,7 +333,7 @@ menu_items = [
         'name': 'Egg Hoppers (2 pieces)',
         'description': 'Traditional bowl-shaped pancakes with egg, served with sambol',
         'price': 450.00,
-        'image': 'https://images.unsplash.com/photo-1596797038530-2c107229654b?w=400',
+        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
         'category': 'Appetizers'
     },
     {
@@ -341,7 +341,7 @@ menu_items = [
         'name': 'Fish Curry',
         'description': 'Fresh fish cooked in coconut curry with Sri Lankan spices',
         'price': 1450.00,
-        'image': 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400',
+        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
         'category': 'Main Course'
     },
     {
@@ -349,7 +349,7 @@ menu_items = [
         'name': 'Fresh Mango Lassi',
         'description': 'Creamy yogurt drink blended with fresh mango',
         'price': 350.00,
-        'image': 'https://images.unsplash.com/photo-1553909489-cd47e0ef937f?w=400',
+        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
         'category': 'Beverages'
     },
     {
@@ -357,7 +357,7 @@ menu_items = [
         'name': 'Coconut Cake',
         'description': 'Traditional Sri Lankan coconut cake with jaggery',
         'price': 550.00,
-        'image': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
+        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
         'category': 'Desserts'
     }
 ]

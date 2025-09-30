@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Green Heaven - Menu</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/customer.css') }}">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Preload critical resources for faster loading -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
+    <!-- Load Font Awesome asynchronously -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
 </head>
 <body>
     <div class="customer-app">
@@ -149,27 +153,35 @@
         <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwPKCKE3NrMeR8BMGw=" type="audio/wav">
     </audio>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- Load Socket.IO from local source or CDN fallback (non-blocking) -->
     <script>
-        // Customer data
+        // Load Socket.IO asynchronously to avoid blocking
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+            script.async = true;
+            script.onload = function() {
+                console.log('✅ Socket.IO loaded');
+            };
+            script.onerror = function() {
+                console.warn('⚠️ Socket.IO CDN failed, some features may not work');
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <script>
+        // Customer data - available immediately
         const customerName = "{{ customer_name }}";
         const tableNumber = "{{ table_number }}";
-        let menuItems = [];
-        
-        // Load menu items
-        fetch('/api/menu')
-            .then(response => response.json())
-            .then(data => {
-                menuItems = data;
-            })
-            .catch(error => console.error('Error loading menu:', error));
+        let menuItems = {{ menu_items | tojson }};  // Load menu directly from server
         
         // Cart data
         let cart = {};
         let orderStatus = null;
         
-        // Socket.IO will be initialized by customer.js for better performance
+        // Menu is already loaded, no need for additional fetch
         console.log('📱 Customer page ready for', customerName, 'at table', tableNumber);
+        console.log('🍽️ Menu loaded with', menuItems.length, 'items');
     </script>
     <script src="{{ url_for('static', filename='js/customer.js') }}"></script>
 </body>
