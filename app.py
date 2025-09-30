@@ -784,6 +784,7 @@ def customer_page():
     return render_template('customer_page.html', 
                          customer_name=customer_name, 
                          table_number=table_number,
+                         menu_items=menu_items,
                          supabase_url=supabase_url,
                          supabase_anon_key=supabase_anon_key)
 
@@ -1731,7 +1732,7 @@ def on_connect():
         print(f"❌ Error on connect: {e}")
 
 @socketio.on('disconnect')
-def on_disconnect():
+def on_disconnect(auth=None):
     try:
         print(f"🔌 Socket.IO client disconnected")
     except Exception as e:
