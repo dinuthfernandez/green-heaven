@@ -2,8 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Green Heaven - Staff Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">                        <!-- Recent Activity -->
+                        <div class="activity-section">
+                            <h3>Recent Activity</h3>
+                            <div class="activity-feed" id="activity-feed">
+                                <!-- Activity items will be loaded dynamically via JavaScript -->
+                                <div class="activity-item">
+                                    <div class="activity-icon info">
+                                        <i class="fas fa-info-circle"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p>Loading recent activity...</p>
+                                        <span class="activity-time">Now</span>
+                                    </div>
+                                </div>en Heaven - Staff Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/staff-dashboard.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
