@@ -38,75 +38,27 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'green-heaven-secret-key-2024')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Firebase Configuration with improved error handling
-db = None
-if FIREBASE_AVAILABLE:
-    try:
-        # Ensure firebase_admin, credentials, and firestore are imported
-        import firebase_admin
-        from firebase_admin import credentials, firestore
+# Simple file-based storage - perfect for lightweight restaurant data
+import threading
+import time
+from pathlib import Path
 
-        # Initialize Firebase (only if not already initialized)
-        if not firebase_admin._apps:
-            # First try service account file
-            service_account_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY')
-            if service_account_path and os.path.exists(service_account_path):
-                print("📝 Using Firebase service account file")
-                cred = credentials.Certificate(service_account_path)
-                firebase_admin.initialize_app(cred)
-            else:
-                # Use environment variables for Render deployment
-                firebase_project_id = os.getenv('FIREBASE_PROJECT_ID')
-                firebase_private_key = os.getenv('FIREBASE_PRIVATE_KEY')
-                firebase_client_email = os.getenv('FIREBASE_CLIENT_EMAIL')
-                
-                print(f"📝 Firebase Project ID: {firebase_project_id}")
-                print(f"📝 Firebase Client Email: {firebase_client_email}")
-                print(f"📝 Firebase Private Key: {'Present' if firebase_private_key else 'Missing'}")
-                
-                if firebase_project_id and firebase_private_key and firebase_client_email:
-                    firebase_config = {
-                        "type": "service_account",
-                        "project_id": firebase_project_id,
-                        "private_key_id": os.getenv('FIREBASE_PRIVATE_KEY_ID'),
-                        "private_key": firebase_private_key.replace('\\n', '\n'),
-                        "client_email": firebase_client_email,
-                        "client_id": os.getenv('FIREBASE_CLIENT_ID'),
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                        "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{firebase_client_email}"
-                    }
-                    print("📝 Initializing Firebase with environment variables")
-                    cred = credentials.Certificate(firebase_config)
-                    firebase_admin.initialize_app(cred)
-                else:
-                    print("❌ Missing required Firebase environment variables")
-                    print(f"   - FIREBASE_PROJECT_ID: {'✓' if firebase_project_id else '✗'}")
-                    print(f"   - FIREBASE_PRIVATE_KEY: {'✓' if firebase_private_key else '✗'}")
-                    print(f"   - FIREBASE_CLIENT_EMAIL: {'✓' if firebase_client_email else '✗'}")
-                    raise Exception("Missing required Firebase environment variables")
+# Thread lock for safe file operations
+storage_lock = threading.Lock()
 
-        # Get Firestore client
-        db = firestore.client()
-        
-        # Test connection
-        try:
-            test_collection = db.collection('connection_test')
-            test_doc = test_collection.document('test')
-            test_doc.set({'timestamp': datetime.now().isoformat(), 'status': 'connected'})
-            print("✅ Firebase connected and tested successfully!")
-        except Exception as test_error:
-            print(f"⚠️ Firebase connected but test write failed: {test_error}")
-            # Don't fail completely, just warn
+# Data storage configuration
+DATA_DIR = 'data'
+ORDERS_FILE = os.path.join(DATA_DIR, 'orders.json')
+MANUAL_ORDERS_FILE = os.path.join(DATA_DIR, 'manual_orders.json')
+DAILY_TOTALS_FILE = os.path.join(DATA_DIR, 'daily_totals.json')
+BACKUP_DIR = os.path.join(DATA_DIR, 'backups')
 
-    except Exception as e:
-        print(f"❌ Firebase connection failed: {e}")
-        print(f"📝 Error details: {type(e).__name__}: {str(e)}")
-        print("📝 Falling back to local JSON storage")
-        db = None
-else:
-    print("📝 Firebase not available - using local JSON storage")
+# Create data directories
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(BACKUP_DIR, exist_ok=True)
+
+print("📂 Using lightweight file-based storage - perfect for restaurant data!")
+print("� Data will be stored locally with automatic backups")
 
 # Data storage configuration
 DATA_DIR = 'data'
@@ -120,15 +72,9 @@ if not os.path.exists(DATA_DIR):
 
 # Data storage functions with improved performance and error handling
 def load_data(collection_name):
-    """Load data from Firebase or local JSON file with caching"""
+    """Load data from local JSON file with thread safety"""
     try:
-        if db:
-            # Firebase implementation with timeout
-            docs = db.collection(collection_name).stream()
-            data = [doc.to_dict() for doc in docs]
-            return data
-        else:
-            # Local JSON file implementation
+        with storage_lock:
             file_mapping = {
                 'orders': ORDERS_FILE,
                 'manual_orders': MANUAL_ORDERS_FILE,
@@ -152,46 +98,26 @@ def load_data(collection_name):
                 
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON in {collection_name}: {e}")
-        return []
+        # Try to recover from backup
+        return load_backup_data(collection_name)
     except Exception as e:
         print(f"Error loading from {collection_name}: {e}")
         return []
 
 def save_data(collection_name, data):
-    """Save data to Firebase or local JSON file with better error handling"""
+    """Save data to local JSON file with automatic backup"""
     try:
-        if db:
-            # Firebase implementation with batch operations for better performance
-            if isinstance(data, list):
-                # Use batch operations for better performance
-                batch = db.batch()
-                
-                # Clear existing data first
-                existing_docs = db.collection(collection_name).limit(500).stream()
-                for doc in existing_docs:
-                    batch.delete(doc.reference)
-                
-                # Add new data
-                for item in data:
-                    doc_id = item.get('id', str(uuid.uuid4()))
-                    doc_ref = db.collection(collection_name).document(doc_id)
-                    batch.set(doc_ref, item)
-                
-                # Commit batch
-                batch.commit()
-            else:
-                # Single document
-                doc_id = data.get('id', str(uuid.uuid4()))
-                db.collection(collection_name).document(doc_id).set(data)
-                
-        else:
-            # Local JSON file implementation with atomic writes
+        with storage_lock:
+            # Create backup before saving
+            create_backup(collection_name)
+            
+            # Save to main file
             save_data_local(collection_name, data)
             
+            print(f"✅ Saved {len(data) if isinstance(data, list) else 1} items to {collection_name}")
+            
     except Exception as e:
-        print(f"Error saving to Firebase {collection_name}: {e}")
-        # Always fall back to local storage
-        save_data_local(collection_name, data)
+        print(f"Error saving to {collection_name}: {e}")
 
 def save_data_local(collection_name, data):
     """Save data to local JSON file with atomic writes"""
@@ -224,46 +150,100 @@ def save_data_local(collection_name, data):
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 
+def create_backup(collection_name):
+    """Create backup of data file"""
+    try:
+        file_mapping = {
+            'orders': ORDERS_FILE,
+            'manual_orders': MANUAL_ORDERS_FILE,
+            'daily_totals': DAILY_TOTALS_FILE
+        }
+        
+        filename = file_mapping.get(collection_name)
+        if not filename or not os.path.exists(filename):
+            return
+            
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_filename = os.path.join(BACKUP_DIR, f"{collection_name}_{timestamp}.json")
+        
+        # Keep only last 10 backups per collection
+        cleanup_old_backups(collection_name)
+        
+        # Create backup
+        import shutil
+        shutil.copy2(filename, backup_filename)
+        
+    except Exception as e:
+        print(f"Warning: Failed to create backup for {collection_name}: {e}")
+
+def cleanup_old_backups(collection_name, keep=10):
+    """Keep only the most recent backups"""
+    try:
+        backup_pattern = f"{collection_name}_*.json"
+        backup_files = list(Path(BACKUP_DIR).glob(backup_pattern))
+        
+        if len(backup_files) > keep:
+            # Sort by modification time, keep newest
+            backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            
+            for old_backup in backup_files[keep:]:
+                old_backup.unlink()
+                
+    except Exception as e:
+        print(f"Warning: Failed to cleanup old backups: {e}")
+
+def load_backup_data(collection_name):
+    """Load data from most recent backup"""
+    try:
+        backup_pattern = f"{collection_name}_*.json"
+        backup_files = list(Path(BACKUP_DIR).glob(backup_pattern))
+        
+        if not backup_files:
+            return []
+            
+        # Get most recent backup
+        latest_backup = max(backup_files, key=lambda x: x.stat().st_mtime)
+        
+        with open(latest_backup, 'r', encoding='utf-8') as file:
+            print(f"📦 Restored data from backup: {latest_backup.name}")
+            return json.load(file)
+            
+    except Exception as e:
+        print(f"Error loading backup for {collection_name}: {e}")
+        return []
+
 def add_document(collection_name, document_data):
-    """Add a single document to Firebase or local storage"""
-    if db:
-        try:
-            doc_id = document_data.get('id', str(uuid.uuid4()))
-            db.collection(collection_name).document(doc_id).set(document_data)
-        except Exception as e:
-            print(f"Error adding document to Firebase {collection_name}: {e}")
-            # Fall back to local storage
-            current_data = load_data(collection_name)
-            current_data.append(document_data)
-            save_data_local(collection_name, current_data)
-    else:
+    """Add a single document to local storage"""
+    try:
         # Local storage - append to existing data
         current_data = load_data(collection_name)
         current_data.append(document_data)
-        save_data_local(collection_name, current_data)
+        save_data(collection_name, current_data)
+        print(f"✅ Added document to {collection_name}: {document_data.get('id', 'no-id')}")
+    except Exception as e:
+        print(f"Error adding document to {collection_name}: {e}")
 
 def update_document(collection_name, document_id, update_data):
-    """Update a document in Firebase or local storage"""
-    if db:
-        try:
-            db.collection(collection_name).document(document_id).update(update_data)
-        except Exception as e:
-            print(f"Error updating document in Firebase {collection_name}: {e}")
-            # Fall back to local storage
-            current_data = load_data(collection_name)
-            for item in current_data:
-                if item.get('id') == document_id:
-                    item.update(update_data)
-                    break
-            save_data_local(collection_name, current_data)
-    else:
+    """Update a document in local storage"""
+    try:
         # Local storage - update in memory and save
         current_data = load_data(collection_name)
+        updated = False
+        
         for item in current_data:
             if item.get('id') == document_id:
                 item.update(update_data)
+                updated = True
                 break
-        save_data_local(collection_name, current_data)
+                
+        if updated:
+            save_data(collection_name, current_data)
+            print(f"✅ Updated document in {collection_name}: {document_id}")
+        else:
+            print(f"Warning: Document not found for update: {document_id}")
+            
+    except Exception as e:
+        print(f"Error updating document in {collection_name}: {e}")
 
 def get_today_date():
     """Get today's date in YYYY-MM-DD format"""
@@ -273,32 +253,7 @@ def get_daily_totals():
     """Get daily totals for today"""
     today = datetime.now().strftime('%Y-%m-%d')
     
-    if db:
-        # Firebase implementation
-        try:
-            doc_ref = db.collection('daily_totals').document(today)
-            doc = doc_ref.get()
-            if doc.exists:
-                return doc.to_dict()
-            else:
-                # Create default totals
-                default_totals = {
-                    'date': today,
-                    'digital_orders': 0,
-                    'manual_orders': 0,
-                    'digital_revenue': 0.0,
-                    'manual_revenue': 0.0,
-                    'total_orders': 0,
-                    'total_revenue': 0.0
-                }
-                doc_ref.set(default_totals)
-                return default_totals
-        except Exception as e:
-            print(f"Error getting daily totals from Firebase: {e}")
-            # Fall back to local storage
-            pass
-    
-    # Local storage implementation
+    # Local storage implementation only
     daily_totals = load_data('daily_totals')
     
     # Find today's totals
@@ -324,59 +279,7 @@ def update_daily_totals(amount, order_type):
     """Update daily totals with new order"""
     today = datetime.now().strftime('%Y-%m-%d')
     
-    if db:
-        # Firebase implementation
-        try:
-            doc_ref = db.collection('daily_totals').document(today)
-            doc = doc_ref.get()
-            
-            if doc.exists:
-                totals = doc.to_dict()
-            else:
-                totals = {
-                    'date': today,
-                    'digital_orders': 0,
-                    'manual_orders': 0,
-                    'digital_revenue': 0.0,
-                    'manual_revenue': 0.0,
-                    'total_orders': 0,
-                    'total_revenue': 0.0
-                }
-            
-            # Ensure totals is not None and has all required keys
-            if totals is None:
-                totals = {
-                    'date': today,
-                    'digital_orders': 0,
-                    'manual_orders': 0,
-                    'digital_revenue': 0.0,
-                    'manual_revenue': 0.0,
-                    'total_orders': 0,
-                    'total_revenue': 0.0
-                }
-            
-            # Update based on order type
-            if order_type == 'digital':
-                totals['digital_orders'] = totals.get('digital_orders', 0) + 1
-                totals['digital_revenue'] = totals.get('digital_revenue', 0.0) + float(amount)
-            elif order_type == 'manual':
-                totals['manual_orders'] = totals.get('manual_orders', 0) + 1
-                totals['manual_revenue'] = totals.get('manual_revenue', 0.0) + float(amount)
-            
-            # Update totals
-            totals['total_orders'] = totals.get('digital_orders', 0) + totals.get('manual_orders', 0)
-            totals['total_revenue'] = totals.get('digital_revenue', 0.0) + totals.get('manual_revenue', 0.0)
-            
-            # Save to Firebase
-            doc_ref.set(totals)
-            return
-            
-        except Exception as e:
-            print(f"Error updating daily totals in Firebase: {e}")
-            # Fall back to local storage
-            pass
-    
-    # Local storage implementation
+    # Local storage implementation only
     daily_totals = load_data('daily_totals')
     
     # Find or create today's totals
@@ -412,10 +315,9 @@ def update_daily_totals(amount, order_type):
     
     save_data('daily_totals', daily_totals)
 
-# Load persistent data (initialize empty if using database)
-if not db:
-    all_orders = load_data('orders')
-    manual_orders = load_data('manual_orders')
+# Load persistent data
+all_orders = load_data('orders')
+manual_orders = load_data('manual_orders')
 
 # In-memory storage (in production, use a database)
 menu_items = [
@@ -1067,29 +969,23 @@ def get_system_status():
     try:
         status = {
             'timestamp': datetime.now().isoformat(),
-            'firebase_available': FIREBASE_AVAILABLE,
-            'firebase_connected': db is not None,
+            'firebase_available': False,
+            'firebase_connected': False,
             'pdf_generation': PDF_AVAILABLE,
             'environment': 'production' if os.getenv('PORT') else 'development',
-            'data_storage': 'firebase' if db else 'local'
+            'data_storage': 'local'
         }
         
-        # Test Firebase connection if available
-        if db:
-            try:
-                # Try a simple read operation
-                test_doc = db.collection('test').limit(1).stream()
-                list(test_doc)  # Execute the query
-                status['firebase_read_test'] = 'success'
-            except Exception as e:
-                status['firebase_read_test'] = f'failed: {str(e)}'
-                status['firebase_error'] = str(e)
+        # Local storage status
+        status['storage_status'] = 'file-based JSON storage with backup'
+        status['data_files'] = {
+            'orders': os.path.exists('data/orders.json'),
+            'manual_orders': os.path.exists('data/manual_orders.json'),
+            'daily_totals': os.path.exists('data/daily_totals.json')
+        }
         
         # Get environment variables status (without exposing values)
         env_vars = {
-            'FIREBASE_PROJECT_ID': bool(os.getenv('FIREBASE_PROJECT_ID')),
-            'FIREBASE_PRIVATE_KEY': bool(os.getenv('FIREBASE_PRIVATE_KEY')),
-            'FIREBASE_CLIENT_EMAIL': bool(os.getenv('FIREBASE_CLIENT_EMAIL')),
             'SECRET_KEY': bool(os.getenv('SECRET_KEY')),
             'PORT': os.getenv('PORT', 'not_set')
         }
