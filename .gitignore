@@ -130,11 +130,23 @@ dmypy.json
 
 # Local data storage
 data/
-*.json
 
-# Firebase service account keys
+# Firebase service account keys (deprecated - using Supabase now)
 *service-account*.json
 firebase-adminsdk*.json
+firebase-key.json
+
+# Supabase setup files (keep main .env for configuration)
+migrate_to_supabase.py
+setup_supabase.py
+test_supabase*.py
+database_schema.sql
+supabase_storage_setup.sql
+SUPABASE_SETUP.md
+SETUP_COMPLETE.sh
+
+# Temporary requirements files
+requirements-*.txt
 
 # MacOS
 .DS_Store
@@ -144,3 +156,9 @@ firebase-adminsdk*.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

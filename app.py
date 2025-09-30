@@ -733,17 +733,8 @@ def customer_page():
 # Routes for restaurant staff
 @app.route('/staff')
 def staff_page():
-    """Restaurant staff page - orders, alerts, table management"""
-    # Get table status information
-    orders = load_data('orders')
-    if not orders:
-        orders = []
-    tables = get_table_status()
-    return render_template('staff_page.html', 
-                         menu_items=menu_items,
-                         orders=orders,
-                         alerts=staff_alerts,
-                         tables=tables)
+    """Modern staff dashboard with organized navigation"""
+    return render_template('staff_dashboard.html')
 
 @app.route('/menu-management')
 def menu_management():
@@ -1481,6 +1472,169 @@ def get_tables():
     """Get table status information"""
     tables = get_table_status()
     return jsonify(tables)
+
+# Dashboard API Routes
+@app.route('/api/tables/<table_id>/clean', methods=['POST'])
+def clean_table(table_id):
+    """Clean/reset a table"""
+    try:
+        orders = load_data('orders')
+        # Remove orders for this table
+        if orders:
+            orders = [order for order in orders if order.get('table_number') != table_id]
+            save_data('orders', orders)
+        
+        # Clear alerts for this table
+        global staff_alerts
+        staff_alerts = [alert for alert in staff_alerts if alert.get('table') != table_id]
+        
+        # Emit update
+        socketio.emit('table_update', {'table_id': table_id, 'status': 'cleaned'}, to='staff')
+        
+        return jsonify({'status': 'success', 'message': f'Table {table_id} cleaned'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/orders/<order_id>/status', methods=['PUT'])
+def update_order_status_new(order_id):
+    """Update order status for dashboard"""
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if not new_status:
+            return jsonify({'status': 'error', 'message': 'Status is required'}), 400
+        
+        orders = load_data('orders')
+        if not orders:
+            return jsonify({'status': 'error', 'message': 'Order not found'}), 404
+        
+        # Find and update the order
+        order_updated = False
+        for order in orders:
+            if order.get('id') == order_id:
+                order['status'] = new_status
+                order['updated_at'] = datetime.now().isoformat()
+                order_updated = True
+                break
+        
+        if order_updated:
+            save_data('orders', orders)
+            socketio.emit('order_update', {
+                'order_id': order_id, 
+                'status': new_status
+            }, to='staff')
+            return jsonify({'status': 'success'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Order not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/alerts/<alert_id>/resolve', methods=['POST'])
+def resolve_alert(alert_id):
+    """Resolve a customer alert"""
+    try:
+        global staff_alerts
+        # Find and remove the alert
+        alert_found = False
+        for i, alert in enumerate(staff_alerts):
+            if alert.get('id') == alert_id:
+                staff_alerts.pop(i)
+                alert_found = True
+                break
+        
+        if alert_found:
+            socketio.emit('alert_resolved', {'alert_id': alert_id}, to='staff')
+            return jsonify({'status': 'success'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Alert not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/alerts/<alert_id>/respond', methods=['POST'])
+def respond_to_alert(alert_id):
+    """Send response to customer alert"""
+    try:
+        data = request.get_json()
+        response_text = data.get('response')
+        
+        if not response_text:
+            return jsonify({'status': 'error', 'message': 'Response text is required'}), 400
+        
+        # Find the alert
+        alert = None
+        for a in staff_alerts:
+            if a.get('id') == alert_id:
+                alert = a
+                break
+        
+        if not alert:
+            return jsonify({'status': 'error', 'message': 'Alert not found'}), 404
+        
+        # Send response to customer
+        table_number = alert.get('table')
+        socketio.emit('staff_response', {
+            'message': response_text,
+            'timestamp': datetime.now().isoformat()
+        }, to=f'table_{table_number}')
+        
+        return jsonify({'status': 'success'})
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/analytics')
+def get_analytics():
+    """Get analytics data for dashboard"""
+    try:
+        orders = load_data('orders') or []
+        manual_orders = load_data('manual_orders') or []
+        daily_totals = load_data('daily_totals') or {}
+        
+        # Calculate analytics
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_orders = [order for order in orders if order.get('timestamp', '').startswith(today)]
+        
+        total_revenue = sum(order.get('total', 0) for order in today_orders)
+        total_orders = len(today_orders)
+        avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
+        
+        # Table utilization
+        tables = get_table_status()
+        occupied_tables = len([t for t in tables if t.get('status') == 'occupied'])
+        total_tables = len(tables)
+        table_utilization = (occupied_tables / total_tables * 100) if total_tables > 0 else 0
+        
+        analytics = {
+            'daily_revenue': total_revenue,
+            'daily_orders': total_orders,
+            'avg_order_value': avg_order_value,
+            'table_utilization': table_utilization,
+            'peak_hours': '12:00 PM - 2:00 PM',  # Static for now
+            'popular_items': get_popular_items(orders)
+        }
+        
+        return jsonify(analytics)
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+def get_popular_items(orders):
+    """Get most popular menu items"""
+    item_counts = {}
+    
+    for order in orders:
+        items = order.get('items', [])
+        for item in items:
+            name = item.get('name', 'Unknown')
+            quantity = item.get('quantity', 1)
+            item_counts[name] = item_counts.get(name, 0) + quantity
+    
+    # Sort by quantity and return top 5
+    popular = sorted(item_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    return [{'name': name, 'quantity': qty} for name, qty in popular]
 
 # Socket events
 @socketio.on('join_staff_room')

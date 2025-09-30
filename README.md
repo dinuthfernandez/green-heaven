@@ -1,66 +1,87 @@
 # Green Heaven Restaurant Management System
 
-A modern, real-time restaurant management system built with Python Flask, HTML, CSS, and JavaScript. This system provides separate interfaces for restaurant staff and customers with real-time communication via WebSockets.
+A modern, real-time restaurant management system built with Python Flask and featuring a comprehensive staff dashboard. This system provides organized interfaces for restaurant staff and customers with real-time communication via WebSockets.
 
-## 🆕 Latest Updates & Improvements
+## 🆕 Latest Updates & Major Improvements
 
-### ✅ **Enhanced Order Tracking**
-- **Order Statistics Dashboard**: Real-time counters for pending, preparing, ready, and completed orders
-- **Order Filtering**: Filter orders by status (All, Pending, Preparing, Ready, Completed)
-- **Improved Order Management**: Better status tracking and workflow management
-- **Order History**: Complete tracking from placement to completion
+### ✅ **Complete Staff Dashboard Redesign**
+- **Modern Dashboard Layout**: Professional sidebar navigation with organized sections
+- **Separated Functional Areas**: Overview, Table Management, Orders, Alerts, Menu, Analytics, Settings
+- **Real-time Navigation**: Smooth page transitions with keyboard shortcuts (Ctrl+1-7)
+- **Live Notifications**: Real-time badges and notification counts
+- **Mobile-Responsive**: Collapsible sidebar and optimized mobile experience
 
-### ✅ **Mobile & Tablet Optimized**
-- **Fully Responsive Design**: Works perfectly on smartphones, tablets, and desktops
-- **Touch-Friendly Interface**: Optimized buttons and controls for touch devices
-- **Mobile-First Approach**: Better typography and spacing for small screens
-- **Tablet Layout**: Optimized layouts for medium-sized screens
+### ✅ **Enhanced Staff Workflow**
+- **Overview Dashboard**: Quick stats, recent activity feed, and action buttons
+- **Table Management**: Visual table status with customer information and alerts
+- **Order Processing**: Complete workflow from pending to completion
+- **Alert System**: Customer call management with response capabilities
+- **Menu Preview**: Quick access to menu items and management
+- **Analytics**: Performance metrics and reporting
+- **Settings Panel**: System configuration and preferences
 
-### ✅ **Error Handling & Reliability**
-- **Robust Error Handling**: Comprehensive error handling for all API endpoints
-- **Better Data Validation**: Validation for all user inputs
-- **Loading States**: Visual feedback during operations
-- **Error Messages**: User-friendly error messages
+### ✅ **Real-time Performance Optimization**
+- **Supabase Integration**: Enterprise-level real-time database with local fallback
+- **Socket.IO Communication**: Instant updates across all connected devices
+- **Auto-refresh**: Automatic data synchronization every 30 seconds
+- **Template Optimization**: Removed JSON template injection for better performance
+- **API-based Loading**: Dynamic content loading via REST APIs
 
-### ✅ **Performance Improvements**
-- **Dynamic Menu Loading**: Menu items load dynamically for better performance
-- **Real-time Updates**: Instant updates without page refreshes
-- **Auto-refresh**: Automatic data refreshing every 30 seconds
+### ✅ **Mobile & Responsive Design**
+- **Mobile-First Approach**: Optimized for smartphones and tablets
+- **Touch-Friendly Interface**: Large buttons and intuitive navigation
+- **Responsive Sidebar**: Collapsible navigation for mobile devices
+- **Adaptive Layouts**: Grid systems that work across all screen sizes
 
 ## Features
 
 ### Customer Features
-- **Welcome Page**: Customers enter their name and table number
-- **Dynamic Menu**: Browse menu items with photos, descriptions, and prices
-- **Category Filtering**: Filter menu by categories (Appetizers, Main Course, Sri Lankan Specials, etc.)
-- **Shopping Cart**: Add items to cart with quantity controls
+- **Welcome Page**: Enter name and table number (Operating Hours: 11:00 AM - 11:00 PM)
+- **Dynamic Menu**: Browse items with photos, descriptions, and prices
+- **Category Filtering**: Filter by Appetizers, Main Course, Sri Lankan Specials, etc.
+- **Shopping Cart**: Add items with quantity controls
 - **Order Placement**: Place orders directly from the table
-- **Call Staff**: Request staff assistance with table number notification
-- **Real-time Updates**: Receive notifications when order status changes
-- **Mobile Optimized**: Perfect mobile and tablet experience
-- **Touch-Friendly**: Optimized for touch interactions
+- **Call Staff**: Request assistance with real-time notifications
+- **Order Tracking**: Real-time updates on order status
 
-### Staff Features
-- **Enhanced Dashboard**: Overview with order statistics and filtering
-- **Order Statistics**: Real-time counters for all order statuses
-- **Order Filtering**: Filter by pending, preparing, ready, completed orders
-- **Alert Management**: Receive and manage customer staff calls with table numbers
-- **Advanced Order Management**: Track orders through complete workflow
-- **Menu Management**: Add new menu items with photos, descriptions, and prices
-- **Real-time Notifications**: Instant alerts for new orders and staff calls
-- **Audio Alerts**: Sound notifications for important events
-- **Mobile Optimized**: Full functionality on mobile devices
+### Staff Features - Modern Dashboard
+#### Overview Section
+- **Quick Statistics**: Tables occupied/available, pending orders, active alerts
+- **Recent Activity**: Live feed of orders, alerts, and customer interactions
+- **Quick Actions**: Direct access to common tasks
+
+#### Table Management
+- **Visual Table Status**: Color-coded table cards with real-time status
+- **Customer Information**: Names, seating duration, order totals
+- **Alert Indicators**: Visual and audio alerts for customer requests
+- **Action Buttons**: Table cleaning, details view, status updates
+
+#### Order Management
+- **Complete Order Workflow**: Pending → Preparing → Ready → Completed
+- **Order Filtering**: Filter by status with active indicators
+- **Order Details**: Customer info, items, quantities, totals
+- **Status Updates**: One-click status changes with real-time sync
+
+#### Alert System
+- **Customer Call Management**: Organized list of customer requests
+- **Response System**: Send responses directly to customer tables
+- **Auto-Resolution**: Mark alerts as resolved with staff actions
+- **Priority Indicators**: Visual cues for urgent requests
+
+#### Analytics & Reporting
+- **Daily Revenue**: Real-time revenue tracking
+- **Order Statistics**: Counts by status and time periods
+- **Table Utilization**: Occupancy rates and turnover metrics
+- **Popular Items**: Most ordered menu items analysis
 
 ### Technical Features
 - **Real-time Communication**: WebSocket integration for instant updates
-- **Fully Responsive Design**: Works perfectly on desktop, tablet, and mobile devices
-- **Modern UI**: Clean, professional interface with Green Heaven branding
-- **Sri Lankan Theme**: Designed for Sri Lankan restaurant in Katuneriya
-- **Audio Notifications**: Sound alerts for staff and customers
-- **Error Handling**: Comprehensive error handling and user feedback
+- **Modern Dashboard**: Professional interface with organized navigation
+- **Supabase Database**: Real-time database with local fallback
+- **API Architecture**: RESTful endpoints for all operations
+- **Error Handling**: Comprehensive error management
 - **Performance Optimized**: Fast loading and smooth interactions
-- **Touch-Friendly**: Optimized for touch devices with proper touch targets
-- **Mobile-First**: Designed with mobile users in mind
+- **Keyboard Shortcuts**: Quick navigation for power users
 
 ## Installation & Setup
 
@@ -74,7 +95,15 @@ cd "/Users/dinuthfernando/Documents/projects/green heaven"
 pip install -r requirements.txt
 ```
 
-### Step 2: Run the Application
+### Step 2: Environment Configuration
+Create a `.env` file with your Supabase credentials (optional):
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SECRET_KEY=your_secret_key
+```
+
+### Step 3: Run the Application
 ```bash
 python app.py
 ```
@@ -91,29 +120,32 @@ The application will start on `http://localhost:5001`
 
 ### For Staff
 1. Visit `http://localhost:5001/staff`
-2. Monitor alerts and orders in real-time
-3. Update order statuses as food is prepared
-4. Add new menu items with photos and descriptions
+2. Navigate through the organized dashboard sections
+3. Monitor real-time alerts and orders
+4. Process orders through the complete workflow
+5. Manage customer requests and responses
 
 ## Project Structure
 
 ```
 green heaven/
-├── app.py                 # Flask application with routes and API endpoints
-├── requirements.txt       # Python dependencies
-├── templates/            # HTML templates
-│   ├── customer_entry.html    # Customer welcome/entry page
-│   ├── customer_page.html     # Main customer interface
-│   └── staff_page.html        # Staff dashboard
-└── static/               # Static assets
-    ├── css/              # Stylesheets
-    │   ├── customer-entry.css # Entry page styles
-    │   ├── customer.css       # Customer page styles
-    │   └── staff.css          # Staff dashboard styles
-    ├── js/               # JavaScript files
-    │   ├── customer.js        # Customer functionality
-    │   └── staff.js           # Staff functionality
-    └── images/           # Image assets (for menu items)
+├── app.py                     # Flask application with API endpoints
+├── requirements.txt           # Python dependencies
+├── templates/                 # HTML templates
+│   ├── customer_entry.html        # Customer welcome page
+│   ├── customer_page.html         # Customer interface
+│   └── staff_dashboard.html       # Modern staff dashboard
+└── static/                    # Static assets
+    ├── css/                   # Stylesheets
+    │   ├── customer-entry.css     # Entry page styles
+    │   ├── customer.css           # Customer interface styles
+    │   ├── menu-management.css    # Menu management styles
+    │   └── staff-dashboard.css    # Modern dashboard styles
+    ├── js/                    # JavaScript files
+    │   ├── customer.js            # Customer functionality
+    │   ├── menu-management.js     # Menu management
+    │   └── staff-dashboard.js     # Dashboard functionality
+    └── images/                # Image assets
 ```
 
 ## API Endpoints
@@ -122,116 +154,85 @@ green heaven/
 - `GET /` - Customer entry page
 - `GET /customer` - Main customer interface
 - `POST /api/call-staff` - Request staff assistance
-- `POST /api/place-order` - Place a new order
+- `POST /api/place-order` - Place new order
+- `GET /api/menu` - Get menu items
 
-### Staff Endpoints  
-- `GET /staff` - Staff dashboard
-- `POST /api/add-menu-item` - Add new menu item
+### Staff Dashboard Endpoints
+- `GET /staff` - Modern staff dashboard
+- `GET /api/tables` - Get table status
+- `GET /api/orders` - Get orders with filtering
+- `GET /api/alerts` - Get active alerts
+- `GET /api/analytics` - Get performance metrics
+- `POST /api/tables/<id>/clean` - Clean/reset table
+- `PUT /api/orders/<id>/status` - Update order status
+- `POST /api/alerts/<id>/resolve` - Resolve alert
+- `POST /api/alerts/<id>/respond` - Send response to customer
+
+### Legacy Endpoints
+- `POST /api/add-menu-item` - Add menu item
 - `POST /api/update-order-status` - Update order status
-- `POST /api/dismiss-alert` - Dismiss staff alert
-- `GET /api/orders` - Get orders (with optional status filter)
 - `GET /api/orders/stats` - Get order statistics
-- `GET /api/alerts` - Get all active alerts
+
+## Dashboard Navigation
+
+### Keyboard Shortcuts
+- `Ctrl+1` - Overview
+- `Ctrl+2` - Table Management  
+- `Ctrl+3` - Order Management
+- `Ctrl+R` - Refresh Data
+
+### Navigation Sections
+1. **Overview** - Dashboard home with quick stats and activity
+2. **Tables** - Visual table management with status indicators
+3. **Orders** - Complete order processing workflow
+4. **Alerts** - Customer call and request management
+5. **Menu** - Menu preview and management access
+6. **Analytics** - Performance metrics and reports
+7. **Settings** - System configuration
 
 ## Customization
 
-### Adding Menu Items
-Staff can add menu items through the dashboard with:
-- Item name and description
-- Category (Appetizers, Main Course, etc.)
-- Price in LKR
-- Photo URL
-- Detailed description
+### Restaurant Information
+Update in templates:
+- Restaurant name: "Green Heaven"
+- Location: "Katuneriya, Sri Lanka"  
+- Operating Hours: "11:00 AM - 11:00 PM"
 
 ### Styling
-The application uses a green theme representing "Green Heaven":
+Modern green theme with:
 - Primary colors: #2d5a27, #4a7c59
-- Modern, clean design with gradients and shadows
-- Fully responsive for all device sizes
-
-### Restaurant Information
-Update restaurant details in the templates:
-- Restaurant name: "Green Heaven" 
-- Location: "Katuneriya, Sri Lanka"
-- Contact info and hours in customer_entry.html
+- Professional dashboard design
+- Responsive grid layouts
+- Smooth animations and transitions
 
 ## Technologies Used
 
 - **Backend**: Python Flask, Flask-SocketIO
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **Database**: Supabase (with local JSON fallback)
+- **Frontend**: HTML5, CSS3, JavaScript ES6+
 - **Real-time**: WebSockets via Socket.IO
-- **Styling**: CSS Grid, Flexbox, CSS animations
+- **Styling**: CSS Grid, Flexbox, modern animations
 - **Icons**: Font Awesome
 - **Fonts**: Inter (Google Fonts)
 
-## Browser Support
-
-- Chrome 80+
-- Firefox 75+
-- Safari 13+
-- Edge 80+
-
 ## Production Deployment
 
-For production deployment:
+### Render.com Deployment
+1. Connect GitHub repository
+2. Set environment variables in Render dashboard
+3. Auto-deployment on git push
 
-1. Set up a proper database (PostgreSQL/MySQL) instead of in-memory storage
-2. Configure a production WSGI server (Gunicorn)
-3. Set up SSL certificates for HTTPS
-4. Use environment variables for configuration
-5. Set up proper logging and monitoring
-6. Configure file uploads for menu item images
-
-## 🌐 Deployment on Render
-
-### Prerequisites
-- GitHub repository
-- Render account (free tier available)
-- Firebase/Supabase database setup
-
-### Environment Variables for Render
-Set these in your Render dashboard:
-```
-DATABASE_URL=your_database_connection_string
-SECRET_KEY=your_secret_key_here
+### Environment Variables
+```env
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SECRET_KEY=your_flask_secret_key
 PORT=5001
-PYTHON_VERSION=3.9.7
 ```
-
-### Deployment Files
-- `requirements.txt` - Python dependencies
-- `runtime.txt` - Python version specification
-- `render.yaml` - Render configuration
-
-### Automatic Deployment
-1. Connect your GitHub repository to Render
-2. Render will automatically detect the Flask app
-3. Set environment variables in Render dashboard
-4. Deploy will trigger on every git push
-
-## 📊 Database Integration
-
-### Firebase Setup (Recommended)
-1. Create Firebase project at https://console.firebase.google.com
-2. Enable Firestore Database
-3. Generate service account key
-4. Add credentials to Render environment variables
-
-### Database Collections
-- `orders` - Digital orders
-- `manual_orders` - Staff-added orders
-- `daily_totals` - Revenue tracking
-- `staff_alerts` - Customer assistance requests
-
-## 🔄 Real-time Database Features
-- **Live Order Tracking**: Orders sync across all devices
-- **Staff Notifications**: Instant alerts for new orders/requests
-- **Revenue Analytics**: Real-time business metrics
-- **Multi-device Sync**: Works across multiple staff devices
 
 ## Contributing
 
-This is a custom restaurant management system for Green Heaven restaurant. For modifications or improvements, please ensure all changes maintain the Sri Lankan theme and real-time functionality.
+This is a custom restaurant management system for Green Heaven restaurant. The modern dashboard architecture provides a scalable foundation for additional features and customizations.
 
 ## License
 

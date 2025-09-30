@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Green Heaven - Staff Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/staff-dashboard.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-layout">
+        <!-- Navigation Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-section">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Green Heaven Logo" class="logo">
+                    <div class="brand-text">
+                        <h1>Green Heaven</h1>
+                        <small>Staff Dashboard</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-menu">
+                <ul class="nav-items">
+                    <li class="nav-item active" data-page="overview">
+                        <a href="#overview" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-page="tables">
+                        <a href="#tables" class="nav-link">
+                            <i class="fas fa-table"></i>
+                            <span>Table Management</span>
+                            <span class="badge" id="tables-badge">{{ tables|selectattr("status", "equalto", "needs_attention")|list|length }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-page="orders">
+                        <a href="#orders" class="nav-link">
+                            <i class="fas fa-receipt"></i>
+                            <span>Orders</span>
+                            <span class="badge" id="orders-badge">{{ orders|length }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-page="alerts">
+                        <a href="#alerts" class="nav-link">
+                            <i class="fas fa-bell"></i>
+                            <span>Customer Calls</span>
+                            <span class="badge alert-badge" id="alerts-badge">{{ alerts|length }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-page="menu">
+                        <a href="#menu" class="nav-link">
+                            <i class="fas fa-utensils"></i>
+                            <span>Menu Management</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-page="analytics">
+                        <a href="#analytics" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Analytics</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-page="settings">
+                        <a href="#settings" class="nav-link">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="staff-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Staff Member</span>
+                </div>
+                <button class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2 class="page-title" id="page-title">Restaurant Overview</h2>
+                </div>
+                <div class="header-right">
+                    <div class="notification-center">
+                        <button class="notification-btn" id="notification-btn">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-count" id="notification-count">{{ alerts|length }}</span>
+                        </button>
+                    </div>
+                    <div class="refresh-btn">
+                        <button class="btn-refresh" onclick="refreshAllData()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content Container -->
+            <div class="page-container">
+                <!-- Overview Page -->
+                <div class="page-content active" id="overview-page">
+                    <div class="overview-grid">
+                        <!-- Quick Stats -->
+                        <div class="stats-section">
+                            <h3>Today's Summary</h3>
+                            <div class="stats-cards">
+                                <div class="stat-card occupied">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-number" id="occupied-count">{{ tables|selectattr("status", "in", ["occupied", "needs_attention"])|list|length }}</span>
+                                        <span class="stat-label">Occupied Tables</span>
+                                    </div>
+                                </div>
+                                <div class="stat-card available">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-chair"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-number" id="available-count">{{ tables|selectattr("status", "equalto", "empty")|list|length }}</span>
+                                        <span class="stat-label">Available Tables</span>
+                                    </div>
+                                </div>
+                                <div class="stat-card orders">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-receipt"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-number" id="orders-count">{{ orders|length }}</span>
+                                        <span class="stat-label">Active Orders</span>
+                                    </div>
+                                </div>
+                                <div class="stat-card alerts">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-number" id="alerts-count">{{ alerts|length }}</span>
+                                        <span class="stat-label">Customer Calls</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="activity-section">
+                            <h3>Recent Activity</h3>
+                            <div class="activity-feed" id="activity-feed">
+                                {% for alert in alerts[:3] %}
+                                <div class="activity-item">
+                                    <div class="activity-icon alert">
+                                        <i class="fas fa-bell"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong>{{ alert.customer_name }}</strong> called for assistance</p>
+                                        <span class="activity-time">Table {{ alert.table_number }} • {{ alert.timestamp }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                {% for order in orders[:2] %}
+                                <div class="activity-item">
+                                    <div class="activity-icon order">
+                                        <i class="fas fa-receipt"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p>New order from <strong>{{ order.customer_name }}</strong></p>
+                                        <span class="activity-time">Table {{ order.table_number }} • ${{ "%.2f"|format(order.total) }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="quick-actions-section">
+                            <h3>Quick Actions</h3>
+                            <div class="action-buttons">
+                                <button class="action-btn primary" onclick="showPage('tables')">
+                                    <i class="fas fa-table"></i>
+                                    <span>Manage Tables</span>
+                                </button>
+                                <button class="action-btn secondary" onclick="showPage('menu')">
+                                    <i class="fas fa-utensils"></i>
+                                    <span>Update Menu</span>
+                                </button>
+                                <button class="action-btn success" onclick="clearAllAlerts()">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Clear All Alerts</span>
+                                </button>
+                                <button class="action-btn info" onclick="showPage('analytics')">
+                                    <i class="fas fa-chart-line"></i>
+                                    <span>View Reports</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tables Page -->
+                <div class="page-content" id="tables-page">
+                    <div class="page-header">
+                        <h3>Table Management</h3>
+                        <div class="page-actions">
+                            <button class="btn-secondary" onclick="refreshTables()">
+                                <i class="fas fa-sync-alt"></i>
+                                Refresh Tables
+                            </button>
+                        </div>
+                    </div>
+                    <div class="tables-grid" id="tables-grid">
+                        {% for table in tables %}
+                        <div class="table-card table-{{ table.status }}" data-table="{{ table.number }}">
+                            <div class="table-header">
+                                <div class="table-number">
+                                    <i class="fas fa-{{ 'crown' if 'VIP' in table.number else 'table' }}"></i>
+                                    <span>{{ table.number }}</span>
+                                </div>
+                                <div class="table-status-indicator"></div>
+                            </div>
+                            
+                            <div class="table-content">
+                                {% if table.customer_name %}
+                                    <div class="customer-info">
+                                        <strong>{{ table.customer_name }}</strong>
+                                        {% if table.alerts %}
+                                            <div class="table-alerts">
+                                                {% for alert in table.alerts %}
+                                                <div class="alert-item">
+                                                    <i class="fas fa-exclamation-circle"></i>
+                                                    <span>{{ alert.message or "Needs assistance" }}</span>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="table-actions">
+                                        <button class="btn-small success" onclick="clearTableAlerts('{{ table.number }}')">
+                                            <i class="fas fa-check"></i>
+                                            Clear Alerts
+                                        </button>
+                                        <button class="btn-small info" onclick="viewTableDetails('{{ table.number }}')">
+                                            <i class="fas fa-eye"></i>
+                                            Details
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <div class="empty-table">
+                                        <i class="fas fa-chair"></i>
+                                        <span>Available</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Orders Page -->
+                <div class="page-content" id="orders-page">
+                    <div class="page-header">
+                        <h3>Order Management</h3>
+                        <div class="page-actions">
+                            <div class="filter-buttons">
+                                <button class="filter-btn active" data-status="all">All Orders</button>
+                                <button class="filter-btn" data-status="pending">Pending</button>
+                                <button class="filter-btn" data-status="preparing">Preparing</button>
+                                <button class="filter-btn" data-status="ready">Ready</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="orders-list" id="orders-list">
+                        {% for order in orders %}
+                        <div class="order-card order-{{ order.status }}" data-status="{{ order.status }}">
+                            <div class="order-header">
+                                <div class="order-info">
+                                    <span class="order-id">#{{ order.id[:8] }}</span>
+                                    <span class="table-number">Table {{ order.table_number }}</span>
+                                    <span class="customer-name">{{ order.customer_name }}</span>
+                                </div>
+                                <div class="order-status">
+                                    <span class="status-badge status-{{ order.status }}">{{ order.status.title() }}</span>
+                                    <span class="order-time">{{ order.timestamp }}</span>
+                                </div>
+                            </div>
+                            <div class="order-items">
+                                {% for item in order.items %}
+                                <div class="order-item">
+                                    <span class="item-name">{{ item.name }}</span>
+                                    <span class="item-quantity">x{{ item.quantity }}</span>
+                                    <span class="item-price">${{ "%.2f"|format(item.price * item.quantity) }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="order-actions">
+                                {% if order.status == 'pending' %}
+                                <button class="btn-small warning" onclick="updateOrderStatus('{{ order.id }}', 'preparing')">
+                                    <i class="fas fa-play"></i>
+                                    Start Preparing
+                                </button>
+                                {% elif order.status == 'preparing' %}
+                                <button class="btn-small success" onclick="updateOrderStatus('{{ order.id }}', 'ready')">
+                                    <i class="fas fa-check"></i>
+                                    Mark Ready
+                                </button>
+                                {% elif order.status == 'ready' %}
+                                <button class="btn-small info" onclick="updateOrderStatus('{{ order.id }}', 'delivered')">
+                                    <i class="fas fa-truck"></i>
+                                    Mark Delivered
+                                </button>
+                                {% endif %}
+                                <span class="order-total">Total: ${{ "%.2f"|format(order.total) }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Alerts Page -->
+                <div class="page-content" id="alerts-page">
+                    <div class="page-header">
+                        <h3>Customer Calls & Alerts</h3>
+                        <div class="page-actions">
+                            <button class="btn-danger" onclick="clearAllAlerts()">
+                                <i class="fas fa-trash"></i>
+                                Clear All Alerts
+                            </button>
+                        </div>
+                    </div>
+                    <div class="alerts-list" id="alerts-list">
+                        {% for alert in alerts %}
+                        <div class="alert-card" data-alert-id="{{ alert.id }}">
+                            <div class="alert-header">
+                                <div class="alert-customer">
+                                    <i class="fas fa-user"></i>
+                                    <strong>{{ alert.customer_name }}</strong>
+                                </div>
+                                <div class="alert-table">
+                                    <i class="fas fa-table"></i>
+                                    <span>Table {{ alert.table_number }}</span>
+                                </div>
+                                <div class="alert-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>{{ alert.timestamp }}</span>
+                                </div>
+                            </div>
+                            <div class="alert-message">
+                                <p>{{ alert.message or "Customer needs assistance" }}</p>
+                            </div>
+                            <div class="alert-actions">
+                                <button class="btn-small success" onclick="dismissAlert('{{ alert.id }}')">
+                                    <i class="fas fa-check"></i>
+                                    Resolve
+                                </button>
+                                <button class="btn-small info" onclick="callCustomer('{{ alert.table_number }}')">
+                                    <i class="fas fa-phone"></i>
+                                    Call Back
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Menu Page -->
+                <div class="page-content" id="menu-page">
+                    <div class="page-header">
+                        <h3>Menu Management</h3>
+                        <div class="page-actions">
+                            <a href="/menu-management" class="btn-primary">
+                                <i class="fas fa-external-link-alt"></i>
+                                Full Menu Manager
+                            </a>
+                        </div>
+                    </div>
+                    <div class="menu-preview">
+                        <p>Quick menu overview will be loaded here. Use the "Full Menu Manager" button to access complete menu management features.</p>
+                    </div>
+                </div>
+
+                <!-- Analytics Page -->
+                <div class="page-content" id="analytics-page">
+                    <div class="page-header">
+                        <h3>Analytics & Reports</h3>
+                        <div class="page-actions">
+                            <button class="btn-secondary" onclick="exportReports()">
+                                <i class="fas fa-download"></i>
+                                Export Report
+                            </button>
+                        </div>
+                    </div>
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h4>Today's Sales</h4>
+                            <div class="metric-large">$1,250.00</div>
+                            <div class="metric-change positive">+12% from yesterday</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>Orders Completed</h4>
+                            <div class="metric-large">45</div>
+                            <div class="metric-change positive">+8% from yesterday</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>Average Order Value</h4>
+                            <div class="metric-large">$27.78</div>
+                            <div class="metric-change negative">-3% from yesterday</div>
+                        </div>
+                        <div class="analytics-card">
+                            <h4>Customer Calls</h4>
+                            <div class="metric-large">12</div>
+                            <div class="metric-change neutral">Same as yesterday</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div class="page-content" id="settings-page">
+                    <div class="page-header">
+                        <h3>Restaurant Settings</h3>
+                    </div>
+                    <div class="settings-sections">
+                        <div class="settings-card">
+                            <h4>Operating Hours</h4>
+                            <p>Current: 11:00 AM - 11:00 PM Daily</p>
+                            <button class="btn-secondary">Update Hours</button>
+                        </div>
+                        <div class="settings-card">
+                            <h4>Table Configuration</h4>
+                            <p>Manage table numbers and VIP designations</p>
+                            <button class="btn-secondary">Configure Tables</button>
+                        </div>
+                        <div class="settings-card">
+                            <h4>Staff Notifications</h4>
+                            <p>Customize alert preferences and sounds</p>
+                            <button class="btn-secondary">Notification Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/staff-dashboard.js') }}"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Initialize real-time connections
+        const socket = io();
+        
+        // Real-time updates
+        socket.on('staff_alert', function(data) {
+            updateAlertCount();
+            refreshPage();
+        });
+        
+        socket.on('order_update', function(data) {
+            updateOrderCount();
+            refreshPage();
+        });
+        
+        socket.on('table_update', function(data) {
+            refreshTables();
+        });
+    </script>
+</body>
+</html>
