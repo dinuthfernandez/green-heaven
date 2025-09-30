@@ -188,7 +188,9 @@
         // Customer data - available immediately
         const customerName = "{{ customer_name }}";
         const tableNumber = "{{ table_number }}";
-        let menuItems = {{ menu_items | tojson }};  // Load menu directly from server
+        
+        // Menu items will be loaded dynamically from API
+        let menuItems = [];
         
         // Cart data
         let cart = {};
@@ -271,9 +273,9 @@
             }
         }
         
-        // Menu is already loaded, no need for additional fetch
+        // Initialize page - menu will be loaded dynamically via API
         console.log('📱 Customer page ready for', customerName, 'at table', tableNumber);
-        console.log('🍽️ Menu loaded with', menuItems.length, 'items');
+        console.log('🔄 Menu will be loaded dynamically from Supabase');
     </script>
     <script src="{{ url_for('static', filename='js/customer.js') }}"></script>
 </body>

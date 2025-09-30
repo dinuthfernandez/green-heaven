@@ -5,6 +5,8 @@ import os
 from datetime import datetime, timedelta
 import uuid
 import io
+import base64
+from werkzeug.utils import secure_filename
 
 # PDF generation imports (optional)
 try:
@@ -25,6 +27,8 @@ try:
     print("🚀 Supabase client available - enabling real-time database!")
 except ImportError:
     SUPABASE_AVAILABLE = False
+    Client = None  # Define Client as None if not available
+    create_client = None  # Define create_client as None if not available
     print("📦 Supabase not available - using local storage fallback")
 
 # Load environment variables
@@ -39,8 +43,8 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'green-heaven-secret-key-2024
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Initialize Supabase client for real-time database
-supabase: Client = None
-if SUPABASE_AVAILABLE:
+supabase = None
+if SUPABASE_AVAILABLE and create_client:
     supabase_url = os.getenv('SUPABASE_URL')
     supabase_key = os.getenv('SUPABASE_ANON_KEY')
     
@@ -56,6 +60,65 @@ if SUPABASE_AVAILABLE:
     else:
         print("⚠️ Supabase credentials not found - using local storage")
         print("💡 Add SUPABASE_URL and SUPABASE_ANON_KEY to environment variables")
+
+# Supabase Storage Functions for Images
+def upload_image_to_supabase(file_data, filename, content_type='image/jpeg'):
+    """Upload image to Supabase Storage"""
+    if not supabase:
+        return None
+    
+    try:
+        # Upload to the menu-images bucket
+        result = supabase.storage.from_('menu-images').upload(
+            path=filename,
+            file=file_data,
+            file_options={'content-type': content_type}
+        )
+        
+        if result:
+            # Get public URL
+            public_url = supabase.storage.from_('menu-images').get_public_url(filename)
+            return public_url
+        
+    except Exception as e:
+        print(f"❌ Error uploading image to Supabase: {e}")
+        return None
+
+def delete_image_from_supabase(filename):
+    """Delete image from Supabase Storage"""
+    if not supabase:
+        return False
+    
+    try:
+        result = supabase.storage.from_('menu-images').remove([filename])
+        return True
+    except Exception as e:
+        print(f"❌ Error deleting image from Supabase: {e}")
+        return False
+
+def get_menu_items_from_supabase():
+    """Load menu items from Supabase database"""
+    if not supabase:
+        return None
+    
+    try:
+        result = supabase.table('menu_items').select('*').execute()
+        return result.data
+    except Exception as e:
+        print(f"❌ Error loading menu items from Supabase: {e}")
+        return None
+
+def save_menu_item_to_supabase(menu_item):
+    """Save or update menu item in Supabase"""
+    if not supabase:
+        return False
+    
+    try:
+        result = supabase.table('menu_items').upsert(menu_item).execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error saving menu item to Supabase: {e}")
+        return False
 
 # Fallback to file-based storage if Supabase not available
 if not supabase:
@@ -223,39 +286,6 @@ def save_data(collection_name, data):
     else:
         # Use local file storage
         save_data_local(collection_name, data)
-
-def save_data_local(collection_name, data):
-    """Save data to local JSON file with thread safety and backup"""
-    try:
-        with storage_lock:
-            file_mapping = {
-                'orders': ORDERS_FILE,
-                'manual_orders': MANUAL_ORDERS_FILE,
-                'daily_totals': DAILY_TOTALS_FILE
-            }
-            
-            filename = file_mapping.get(collection_name)
-            if not filename:
-                print(f"Warning: Unknown collection name: {collection_name}")
-                return []
-                
-            if not os.path.exists(filename):
-                print(f"Info: File {filename} doesn't exist, returning empty list")
-                return []
-                
-            with open(filename, 'r', encoding='utf-8') as file:
-                content = file.read().strip()
-                if not content:
-                    return []
-                return json.loads(content)
-                
-    except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON in {collection_name}: {e}")
-        # Try to recover from backup
-        return load_backup_data(collection_name)
-    except Exception as e:
-        print(f"Error loading from {collection_name}: {e}")
-        return []
 
 def save_data_local(collection_name, data):
     """Save data to local JSON file with thread safety and backup"""
@@ -551,57 +581,127 @@ def update_daily_totals(amount, order_type):
 all_orders = load_data('orders')
 manual_orders = load_data('manual_orders')
 
-# In-memory storage (in production, use a database)
-menu_items = [
-    {
-        'id': 'sri-curry',
-        'name': 'Traditional Sri Lankan Curry',
-        'description': 'Authentic curry with coconut milk, served with rice and papadum',
-        'price': 1250.00,
-        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
-        'category': 'Sri Lankan Specials'
-    },
-    {
-        'id': 'kottu-roti',
-        'name': 'Chicken Kottu Roti',
-        'description': 'Chopped flatbread stir-fried with chicken, vegetables and spices',
-        'price': 950.00,
-        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
-        'category': 'Sri Lankan Specials'
-    },
-    {
-        'id': 'hoppers',
-        'name': 'Egg Hoppers (2 pieces)',
-        'description': 'Traditional bowl-shaped pancakes with egg, served with sambol',
-        'price': 450.00,
-        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
-        'category': 'Appetizers'
-    },
-    {
-        'id': 'fish-curry',
-        'name': 'Fish Curry',
-        'description': 'Fresh fish cooked in coconut curry with Sri Lankan spices',
-        'price': 1450.00,
-        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
-        'category': 'Main Course'
-    },
-    {
-        'id': 'mango-lassi',
-        'name': 'Fresh Mango Lassi',
-        'description': 'Creamy yogurt drink blended with fresh mango',
-        'price': 350.00,
-        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
-        'category': 'Beverages'
-    },
-    {
-        'id': 'coconut-cake',
-        'name': 'Coconut Cake',
-        'description': 'Traditional Sri Lankan coconut cake with jaggery',
-        'price': 550.00,
-        'image': '/static/images/placeholder.svg',  # Fast-loading placeholder
-        'category': 'Desserts'
-    }
-]
+# Load menu items from Supabase or use fallback
+def load_menu_items():
+    """Load menu items with Supabase integration"""
+    # Try to load from Supabase first
+    supabase_menu = get_menu_items_from_supabase()
+    
+    if supabase_menu:
+        print(f"📊 Loaded {len(supabase_menu)} menu items from Supabase")
+        # Convert Supabase format to app format
+        formatted_items = []
+        for item in supabase_menu:
+            formatted_item = {
+                'id': item.get('id'),
+                'name': item.get('name'),
+                'description': item.get('description', ''),
+                'price': float(item.get('price', 0)),
+                'image': item.get('image_url') or '/static/images/placeholder.svg',
+                'category': item.get('category', 'Main Course'),
+                'available': item.get('available', True)
+            }
+            formatted_items.append(formatted_item)
+        return formatted_items
+    
+    # Fallback to default menu items
+    print("📂 Using fallback menu items")
+    return [
+        {
+            'id': 'sri-curry',
+            'name': 'Traditional Sri Lankan Curry',
+            'description': 'Authentic curry with coconut milk, served with rice and papadum',
+            'price': 1250.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Sri Lankan Specials',
+            'available': True
+        },
+        {
+            'id': 'kottu-roti',
+            'name': 'Chicken Kottu Roti',
+            'description': 'Chopped flatbread stir-fried with chicken, vegetables and spices',
+            'price': 950.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Sri Lankan Specials',
+            'available': True
+        },
+        {
+            'id': 'hoppers',
+            'name': 'Egg Hoppers (2 pieces)',
+            'description': 'Traditional bowl-shaped pancakes with egg, served with sambol',
+            'price': 450.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Appetizers',
+            'available': True
+        },
+        {
+            'id': 'fish-curry',
+            'name': 'Fish Curry',
+            'description': 'Fresh fish in aromatic spices with coconut gravy',
+            'price': 1350.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Sri Lankan Specials',
+            'available': True
+        },
+        {
+            'id': 'pol-sambol',
+            'name': 'Pol Sambol',
+            'description': 'Traditional coconut relish with chili and lime',
+            'price': 250.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Sides',
+            'available': True
+        },
+        {
+            'id': 'papadum',
+            'name': 'Papadum (4 pieces)',
+            'description': 'Crispy lentil wafers',
+            'price': 200.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Sides',
+            'available': True
+        },
+        {
+            'id': 'mango-lassi',
+            'name': 'Mango Lassi',
+            'description': 'Fresh mango yogurt drink',
+            'price': 350.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Beverages',
+            'available': True
+        },
+        {
+            'id': 'thai-curry',
+            'name': 'Thai Green Curry',
+            'description': 'Spicy green curry with vegetables or chicken',
+            'price': 1150.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'International',
+            'available': True
+        },
+        {
+            'id': 'fried-rice',
+            'name': 'Special Fried Rice',
+            'description': 'Wok-fried rice with egg and vegetables',
+            'price': 850.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Rice & Noodles',
+            'available': True
+        },
+        {
+            'id': 'garlic-naan',
+            'name': 'Garlic Naan',
+            'description': 'Fresh baked bread with garlic and herbs',
+            'price': 350.00,
+            'image': '/static/images/placeholder.svg',
+            'category': 'Breads',
+            'available': True
+        }
+    ]
+
+# Initialize menu items
+menu_items = load_menu_items()
+
 # Initialize empty data (orders now use persistent storage)
 staff_alerts = []
 
@@ -627,7 +727,6 @@ def customer_page():
     return render_template('customer_page.html', 
                          customer_name=customer_name, 
                          table_number=table_number,
-                         menu_items=menu_items,
                          supabase_url=supabase_url,
                          supabase_anon_key=supabase_anon_key)
 
@@ -853,10 +952,84 @@ def add_menu_item():
         }
         menu_items.append(menu_item)
         
+        # Save to Supabase if available
+        if supabase:
+            supabase_item = {
+                'id': menu_item['id'],
+                'name': menu_item['name'],
+                'description': menu_item['description'],
+                'price': menu_item['price'],
+                'image_url': menu_item['image'],
+                'category': menu_item['category'],
+                'available': True
+            }
+            save_menu_item_to_supabase(supabase_item)
+        
         # Emit to all customers
         socketio.emit('menu_updated', menu_item)
         
         return jsonify({'status': 'success', 'menu_item': menu_item})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/upload-menu-image', methods=['POST'])
+def upload_menu_image():
+    """Upload image for menu item"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({'status': 'error', 'message': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+        filename = file.filename or 'unknown'
+        file_ext = os.path.splitext(secure_filename(filename))[1].lower()
+        
+        if file_ext not in allowed_extensions:
+            return jsonify({'status': 'error', 'message': 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed'}), 400
+        
+        # Generate unique filename
+        unique_filename = f"menu-{uuid.uuid4()}{file_ext}"
+        
+        # Read file data
+        file_data = file.read()
+        
+        # Upload to Supabase Storage
+        if supabase:
+            content_type = file.content_type or 'image/jpeg'
+            image_url = upload_image_to_supabase(
+                file_data, 
+                unique_filename, 
+                content_type=content_type
+            )
+            
+            if image_url:
+                return jsonify({
+                    'status': 'success', 
+                    'image_url': image_url,
+                    'filename': unique_filename
+                })
+            else:
+                return jsonify({'status': 'error', 'message': 'Failed to upload image to storage'}), 500
+        else:
+            # Fallback: save to local static folder
+            upload_folder = os.path.join('static', 'images', 'menu')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            file_path = os.path.join(upload_folder, unique_filename)
+            with open(file_path, 'wb') as f:
+                f.write(file_data)
+            
+            local_url = f"/static/images/menu/{unique_filename}"
+            return jsonify({
+                'status': 'success',
+                'image_url': local_url,
+                'filename': unique_filename
+            })
+            
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
