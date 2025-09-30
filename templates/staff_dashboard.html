@@ -356,7 +356,7 @@
     </div>
 
     <!-- JavaScript -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/staff-dashboard.js') }}"></script>
     <script>
         // Initialize Socket.IO connection separately
@@ -365,9 +365,12 @@
         function initializeSocket() {
             try {
                 socket = io({
-                    transports: ['websocket', 'polling'],
+                    transports: ['polling', 'websocket'],
                     upgrade: true,
-                    rememberUpgrade: true
+                    rememberUpgrade: false,
+                    timeout: 20000,
+                    forceNew: false,
+                    autoConnect: true
                 });
                 
                 socket.on('connect', function() {

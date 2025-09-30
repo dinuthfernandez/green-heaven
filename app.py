@@ -44,14 +44,30 @@ except ImportError:
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'green-heaven-secret-key-2024')
 
-# Initialize Flask-SocketIO with flexible async mode
+# Initialize Flask-SocketIO with flexible async mode and protocol compatibility
 # Try gevent first (for production), fallback to threading (for development)
 try:
     import gevent
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*", 
+        async_mode='gevent',
+        logger=False,
+        engineio_logger=False,
+        ping_timeout=60,
+        ping_interval=25
+    )
     print("🌟 Using gevent async mode for optimal performance")
 except ImportError:
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*", 
+        async_mode='threading',
+        logger=False,
+        engineio_logger=False,
+        ping_timeout=60,
+        ping_interval=25
+    )
     print("🔧 Using threading async mode for development")
 
 # Initialize Supabase client for real-time database
@@ -1677,18 +1693,64 @@ def get_popular_items(orders):
     popular = sorted(item_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     return [{'name': name, 'quantity': qty} for name, qty in popular]
 
-# Socket events
+# Socket events with improved error handling and protocol compatibility
 @socketio.on('join_staff_room')
 def on_join_staff():
-    join_room('staff')
-    emit('joined_staff_room')
+    try:
+        join_room('staff')
+        emit('joined_staff_room')
+        print(f"✅ Staff joined room")
+    except Exception as e:
+        print(f"❌ Error joining staff room: {e}")
+        emit('error', {'message': 'Failed to join staff room'})
 
 @socketio.on('join_customer_room')
 def on_join_customer(data):
-    table_number = data.get('table_number')
-    join_room(f'table_{table_number}')
-    emit('joined_customer_room')
+    try:
+        if not data or not isinstance(data, dict):
+            emit('error', {'message': 'Invalid data format'})
+            return
+            
+        table_number = data.get('table_number')
+        if not table_number:
+            emit('error', {'message': 'Table number is required'})
+            return
+            
+        join_room(f'table_{table_number}')
+        emit('joined_customer_room')
+        print(f"✅ Customer joined table room: {table_number}")
+    except Exception as e:
+        print(f"❌ Error joining customer room: {e}")
+        emit('error', {'message': 'Failed to join customer room'})
+
+@socketio.on('connect')
+def on_connect():
+    try:
+        print(f"✅ Socket.IO client connected")
+    except Exception as e:
+        print(f"❌ Error on connect: {e}")
+
+@socketio.on('disconnect')
+def on_disconnect():
+    try:
+        print(f"🔌 Socket.IO client disconnected")
+    except Exception as e:
+        print(f"❌ Error on disconnect: {e}")
+
+@socketio.on_error_default
+def default_error_handler(e):
+    print(f"❌ Socket.IO error: {e}")
+    if hasattr(e, 'args') and len(e.args) > 0:
+        print(f"Error details: {e.args[0]}")
+    # Send generic error response to client
+    emit('error', {'message': 'A socket error occurred'})
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5001))
-    socketio.run(app, debug=False, host='0.0.0.0', port=port)
+    try:
+        port = int(os.getenv('PORT', 5001))
+        print(f"🚀 Starting Green Heaven Restaurant System on port {port}")
+        print(f"🌐 Access at: http://localhost:{port}")
+        socketio.run(app, debug=False, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    except Exception as e:
+        print(f"❌ Failed to start server: {e}")
+        print("💡 Make sure the port is available and try again")

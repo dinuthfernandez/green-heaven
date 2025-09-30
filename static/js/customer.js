@@ -20,12 +20,14 @@ function initializeSocket() {
         console.log('🔄 Connecting to real-time updates...');
         
         socket = io({
-            transports: ['websocket', 'polling'],
-            timeout: 3000, // Reduced timeout for faster response
+            transports: ['polling', 'websocket'],
+            timeout: 20000,
             reconnection: true,
             reconnectionAttempts: maxRetries,
             reconnectionDelay: 1000,
-            forceNew: false // Reuse existing connection if available
+            forceNew: false, // Reuse existing connection if available
+            upgrade: true,
+            rememberUpgrade: false
         });
 
         socket.on('connect', function() {
