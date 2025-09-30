@@ -168,19 +168,8 @@
         let cart = {};
         let orderStatus = null;
         
-        // Initialize Socket.IO
-        const socket = io();
-        
-        // Join customer room for order updates
-        socket.emit('join_customer_room', { table_number: tableNumber });
-        
-        // Listen for order status updates
-        socket.on('order_status_updated', function(data) {
-            if (orderStatus && data.order_id === orderStatus.order_id) {
-                updateOrderStatus(data.status);
-                playNotificationSound();
-            }
-        });
+        // Socket.IO will be initialized by customer.js for better performance
+        console.log('📱 Customer page ready for', customerName, 'at table', tableNumber);
     </script>
     <script src="{{ url_for('static', filename='js/customer.js') }}"></script>
 </body>

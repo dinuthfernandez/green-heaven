@@ -16,18 +16,23 @@ const maxRetries = 3;
 
 function initializeSocket() {
     try {
+        // Show a subtle loading indicator for socket connection
+        console.log('🔄 Connecting to real-time updates...');
+        
         socket = io({
             transports: ['websocket', 'polling'],
-            timeout: 5000,
+            timeout: 3000, // Reduced timeout for faster response
             reconnection: true,
             reconnectionAttempts: maxRetries,
-            reconnectionDelay: 1000
+            reconnectionDelay: 1000,
+            forceNew: false // Reuse existing connection if available
         });
 
         socket.on('connect', function() {
             console.log('✅ Customer socket connected');
             socket.emit('join_customer_room', { table_number: tableNumber });
             connectionRetries = 0;
+            showCustomerNotification('Real-time updates connected! 📡', 'success', 1500);
         });
 
         socket.on('disconnect', function() {
@@ -40,6 +45,7 @@ function initializeSocket() {
             
             if (connectionRetries >= maxRetries) {
                 console.warn('Max connection retries reached. Some features may not work.');
+                showCustomerNotification('Real-time updates unavailable. Basic features still work!', 'warning', 3000);
             }
         });
 
@@ -503,10 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update cart display
         updateCartDisplay();
         
-        // Load menu items from API for real-time updates
-        loadMenuItems();
-        
-        // Show welcome animation
+        // Show welcome animation immediately
         setTimeout(() => {
             const header = document.querySelector('.header');
             if (header) {
@@ -515,7 +518,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 100);
         
+        // Load menu items from API for real-time updates (non-blocking)
+        setTimeout(() => {
+            loadMenuItems();
+        }, 200);
+        
+        // Initialize socket connection after page is ready (non-blocking)
+        setTimeout(() => {
+            initializeSocket();
+        }, 300);
+        
         console.log('✅ Customer page initialized successfully');
+        
+        // Show quick loading complete notification
+        showCustomerNotification('Welcome to Green Heaven! 🌿', 'success', 2000);
+        
     } catch (error) {
         console.error('❌ Error initializing customer page:', error);
         showCustomerNotification('Some features may not work properly. Please refresh the page.', 'error');
@@ -524,7 +541,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Load menu items for real-time updates
 function loadMenuItems() {
-    fetch('/api/menu')
+    // Don't block the UI while loading
+    fetch('/api/menu', {
+        method: 'GET',
+        headers: {
+            'Cache-Control': 'max-age=300' // Cache for 5 minutes
+        }
+    })
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -534,10 +557,16 @@ function loadMenuItems() {
         .then(data => {
             menuItems = data;
             console.log('✅ Menu items loaded successfully');
+            
+            // Update any menu displays if needed
+            if (typeof updateMenuDisplay === 'function') {
+                updateMenuDisplay();
+            }
         })
         .catch(error => {
             console.error('Error loading menu items:', error);
-            // Don't show error notification for this as it's not critical
+            // Gracefully handle menu loading errors
+            showCustomerNotification('Using offline menu. Some items may not be available.', 'warning', 3000);
         });
 }
 
