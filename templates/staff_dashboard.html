@@ -60,7 +60,7 @@
                         <a href="#alerts" class="nav-link">
                             <i class="fas fa-bell"></i>
                             <span>Customer Calls</span>
-                            <span class="badge alert-badge" id="alerts-badge">{{ alerts|length }}</span>
+                            <span class="badge alert-badge" id="alerts-badge">0</span>
                         </a>
                     </li>
                     <li class="nav-item" data-page="menu">
@@ -110,7 +110,7 @@
                     <div class="notification-center">
                         <button class="notification-btn" id="notification-btn">
                             <i class="fas fa-bell"></i>
-                            <span class="notification-count" id="notification-count">{{ alerts|length }}</span>
+                            <span class="notification-count" id="notification-count">0</span>
                         </button>
                     </div>
                     <div class="refresh-btn">
@@ -162,7 +162,7 @@
                                         <i class="fas fa-exclamation-triangle"></i>
                                     </div>
                                     <div class="stat-info">
-                                        <span class="stat-number" id="alerts-count">{{ alerts|length }}</span>
+                                        <span class="stat-number" id="alerts-count">0</span>
                                         <span class="stat-label">Customer Calls</span>
                                     </div>
                                 </div>
@@ -173,28 +173,16 @@
                         <div class="activity-section">
                             <h3>Recent Activity</h3>
                             <div class="activity-feed" id="activity-feed">
-                                {% for alert in alerts[:3] %}
+                                <!-- Activity items will be loaded dynamically via JavaScript -->
                                 <div class="activity-item">
-                                    <div class="activity-icon alert">
-                                        <i class="fas fa-bell"></i>
+                                    <div class="activity-icon info">
+                                        <i class="fas fa-info-circle"></i>
                                     </div>
                                     <div class="activity-content">
-                                        <p><strong>{{ alert.customer_name }}</strong> called for assistance</p>
-                                        <span class="activity-time">Table {{ alert.table_number }} • {{ alert.timestamp }}</span>
+                                        <p>Loading recent activity...</p>
+                                        <span class="activity-time">Now</span>
                                     </div>
                                 </div>
-                                {% endfor %}
-                                {% for order in orders[:2] %}
-                                <div class="activity-item">
-                                    <div class="activity-icon order">
-                                        <i class="fas fa-receipt"></i>
-                                    </div>
-                                    <div class="activity-content">
-                                        <p>New order from <strong>{{ order.customer_name }}</strong></p>
-                                        <span class="activity-time">Table {{ order.table_number }} • ${{ "%.2f"|format(order.total) }}</span>
-                                    </div>
-                                </div>
-                                {% endfor %}
                             </div>
                         </div>
 
