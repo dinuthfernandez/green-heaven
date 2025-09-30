@@ -19,7 +19,9 @@ PORT=10000
 - **Start Command**: `gunicorn --worker-class gevent -w 1 --bind 0.0.0.0:$PORT app:app --timeout 120`
 - **Build Command**: `pip install --upgrade pip setuptools wheel && pip install -r requirements.txt`
 
-**📦 Dependencies:** `gevent>=23.9.0` is included in requirements.txt for Socket.IO support
+**📦 Dependencies:** 
+- `gevent>=23.9.0` for Socket.IO support (eventlet removed for Python 3.13 compatibility)
+- Flask-SocketIO configured with `async_mode='gevent'`
 
 ### Supabase Database Configuration
 ```
