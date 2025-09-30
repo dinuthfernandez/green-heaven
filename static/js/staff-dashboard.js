@@ -6,6 +6,10 @@ class StaffDashboard {
         this.currentPage = 'overview';
         this.sidebarOpen = window.innerWidth > 1024;
         this.refreshInterval = null;
+        this.lastActivity = Date.now();
+        this.isRefreshing = false;
+        this.isScrolling = false;
+        this.scrollTimeout = null;
         this.data = {
             tables: [],
             orders: [],
@@ -20,10 +24,50 @@ class StaffDashboard {
     init() {
         console.log('🚀 Initializing Staff Dashboard...');
         this.bindEvents();
+        this.setupActivityTracking();
         this.initializeNavigationNew();
         this.loadInitialData();
         this.startAutoRefresh();
         console.log('✅ Staff Dashboard initialized successfully');
+    }
+
+    setupActivityTracking() {
+        // Track user activity to prevent disruptive refreshes
+        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        
+        activityEvents.forEach(event => {
+            document.addEventListener(event, () => {
+                this.lastActivity = Date.now();
+            }, { passive: true });
+        });
+
+        // Track focus changes
+        document.addEventListener('focusin', () => {
+            this.lastActivity = Date.now();
+        });
+
+        document.addEventListener('focusout', () => {
+            // Small delay before allowing refresh when focus changes
+            setTimeout(() => {
+                this.lastActivity = Date.now() - 2000; // Allow refresh after 2 seconds
+            }, 2000);
+        });
+
+        // Track scrolling
+        document.addEventListener('scroll', () => {
+            this.isScrolling = true;
+            this.lastActivity = Date.now();
+            
+            // Clear previous timeout
+            if (this.scrollTimeout) {
+                clearTimeout(this.scrollTimeout);
+            }
+            
+            // Set scrolling to false after scrolling stops
+            this.scrollTimeout = setTimeout(() => {
+                this.isScrolling = false;
+            }, 150);
+        }, { passive: true });
     }
 
     handleSocketConnection(socketInstance) {
@@ -767,21 +811,30 @@ class StaffDashboard {
     }
 
     async refreshData() {
-        const refreshBtn = document.querySelector('.btn-refresh');
-        if (refreshBtn) {
-            refreshBtn.disabled = true;
-            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        if (this.isRefreshing) {
+            return; // Prevent multiple simultaneous refreshes
         }
 
+        this.isRefreshing = true;
+        const refreshBtn = document.querySelector('.btn-refresh');
+        
         try {
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            }
+
             await this.loadInitialData();
-            this.showNotification('Data refreshed', 'success');
+            this.showNotification('Data refreshed successfully', 'success');
+            
         } catch (error) {
             this.showNotification('Error refreshing data', 'error');
+            console.error('Refresh error:', error);
         } finally {
+            this.isRefreshing = false;
             if (refreshBtn) {
                 refreshBtn.disabled = false;
-                refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
             }
         }
     }
@@ -860,11 +913,179 @@ class StaffDashboard {
         }
     }
 
-    // Auto-refresh
+    // Auto-refresh with smart background updates
     startAutoRefresh() {
+        // Clear any existing interval
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+        
+        // Start background refresh every 10 seconds
         this.refreshInterval = setInterval(() => {
-            this.loadInitialData();
-        }, 30000); // Refresh every 30 seconds
+            this.smartBackgroundRefresh();
+        }, 10000); // 10 seconds
+        
+        console.log('🔄 Smart auto-refresh started (every 10 seconds)');
+    }
+
+    async smartBackgroundRefresh() {
+        try {
+            // Only refresh if user is not actively interacting
+            if (!this.isUserActive()) {
+                await this.backgroundDataUpdate();
+            }
+        } catch (error) {
+            console.warn('Background refresh error:', error);
+        }
+    }
+
+    isUserActive() {
+        // Check if user was active in the last 3 seconds
+        const timeSinceActivity = Date.now() - this.lastActivity;
+        const recentActivity = timeSinceActivity < 3000;
+        
+        // Check if user is currently typing, clicking, or has focus on input elements
+        const activeElement = document.activeElement;
+        const isTyping = activeElement && (
+            activeElement.tagName === 'INPUT' || 
+            activeElement.tagName === 'TEXTAREA' || 
+            activeElement.tagName === 'SELECT' ||
+            activeElement.isContentEditable
+        );
+        
+        const hasOpenModal = document.querySelector('.modal:not([style*="display: none"])');
+        const hasOpenDropdown = document.querySelector('.dropdown.open, .menu.open');
+        const isScrolling = this.isScrolling;
+        
+        return recentActivity || isTyping || hasOpenModal || hasOpenDropdown || isScrolling || this.isRefreshing;
+    }
+
+    async backgroundDataUpdate() {
+        // Silently fetch new data without showing loading states
+        try {
+            const [tablesData, ordersData, alertsData] = await Promise.all([
+                this.silentFetch('/api/tables'),
+                this.silentFetch('/api/orders'), 
+                this.silentFetch('/api/alerts')
+            ]);
+
+            // Update data only if there are changes
+            let hasChanges = false;
+
+            if (JSON.stringify(tablesData) !== JSON.stringify(this.data.tables)) {
+                this.data.tables = tablesData;
+                hasChanges = true;
+            }
+
+            if (JSON.stringify(ordersData) !== JSON.stringify(this.data.orders)) {
+                this.data.orders = ordersData;
+                hasChanges = true;
+            }
+
+            if (JSON.stringify(alertsData) !== JSON.stringify(this.data.alerts)) {
+                this.data.alerts = alertsData;
+                hasChanges = true;
+            }
+
+            // Only update UI if there are actual changes
+            if (hasChanges) {
+                this.updateDashboardSilently();
+                this.showSubtleRefreshIndicator();
+                console.log('📊 Data refreshed silently in background');
+            }
+
+        } catch (error) {
+            console.warn('Silent refresh failed:', error);
+        }
+    }
+
+    showSubtleRefreshIndicator() {
+        // Show a very subtle indicator that data was refreshed
+        const indicator = document.createElement('div');
+        indicator.className = 'refresh-indicator';
+        indicator.innerHTML = '<i class="fas fa-sync-alt"></i>';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(45, 90, 39, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 10000;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        `;
+        
+        document.body.appendChild(indicator);
+        
+        // Animate in
+        setTimeout(() => {
+            indicator.style.opacity = '1';
+            indicator.style.transform = 'translateY(0)';
+        }, 10);
+        
+        // Animate out and remove
+        setTimeout(() => {
+            indicator.style.opacity = '0';
+            indicator.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                if (indicator.parentNode) {
+                    indicator.parentNode.removeChild(indicator);
+                }
+            }, 300);
+        }, 1500);
+    }
+
+    async silentFetch(url) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                return await response.json();
+            }
+            return null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    updateDashboardSilently() {
+        // Update dashboard without disrupting user experience
+        this.updateStats();
+        this.updateBadges();
+        this.updateNotificationCount();
+        
+        // Only re-render current page if user is not actively using it
+        if (!this.isUserActive()) {
+            this.renderCurrentPageSilently();
+        }
+    }
+
+    renderCurrentPageSilently() {
+        // Update current page content without flash or disruption
+        const container = this.getCurrentPageContainer();
+        if (container && !this.isUserActive()) {
+            // Save scroll position
+            const scrollTop = container.scrollTop;
+            
+            // Update content
+            this.loadPageData(this.currentPage);
+            
+            // Restore scroll position
+            setTimeout(() => {
+                if (container.scrollTop !== scrollTop) {
+                    container.scrollTop = scrollTop;
+                }
+            }, 50);
+        }
+    }
+
+    getCurrentPageContainer() {
+        const pageContent = document.getElementById(`${this.currentPage}-page`);
+        return pageContent ? pageContent.querySelector('.page-container, .tables-grid, .orders-list, .alerts-list') : null;
     }
 
     stopAutoRefresh() {

@@ -1037,6 +1037,35 @@ kbd {
     margin: 0 0.125rem;
 }
 
+/* Smooth transitions for background updates */
+.table-card, .order-card, .alert-card, .stat-card {
+    transition: all 0.3s ease;
+}
+
+.table-card.updating, .order-card.updating, .alert-card.updating {
+    opacity: 0.95;
+}
+
+/* Refresh indicator */
+.refresh-indicator {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+}
+
+.refresh-indicator i {
+    animation: subtle-spin 1s ease-in-out;
+}
+
+@keyframes subtle-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Preserve scroll position during updates */
+.page-content {
+    scroll-behavior: auto;
+}
+
 /* Utility Classes */
 .hidden {
     display: none !important;
