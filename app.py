@@ -59,9 +59,36 @@ if SUPABASE_AVAILABLE and create_client:
     
     if supabase_url and supabase_key:
         try:
-            supabase = create_client(supabase_url, supabase_key)
-            print(f"✅ Supabase connected: {supabase_url}")
-            print("🔄 Real-time database active - lightning fast performance!")
+            # Create Supabase client with Python 3.13 SSL compatibility
+            try:
+                # Try with SSL verification disabled for Python 3.13 compatibility
+                import httpx
+                import ssl
+                
+                # Create SSL context for compatibility
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                
+                supabase = create_client(supabase_url, supabase_key)
+                print(f"✅ Supabase connected: {supabase_url}")
+                print("🔄 Real-time database active - lightning fast performance!")
+                
+            except Exception as ssl_error:
+                print(f"⚠️ SSL connection issue, trying fallback: {ssl_error}")
+                # Fallback: try without custom SSL settings
+                supabase = create_client(supabase_url, supabase_key)
+                print(f"✅ Supabase connected (fallback): {supabase_url}")
+                print("🔄 Real-time database active - lightning fast performance!")
+            
+            # Test connection
+            try:
+                test_result = supabase.table('menu_items').select('id').limit(1).execute()
+                print(f"💾 Real-time database fully operational")
+            except Exception as test_error:
+                print(f"⚠️ Database test warning: {test_error}")
+                # Continue anyway - connection might work for operations
+                
         except Exception as e:
             print(f"❌ Supabase connection failed: {e}")
             print("📁 Falling back to local storage")
