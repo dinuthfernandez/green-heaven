@@ -40,7 +40,16 @@ except ImportError:
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'green-heaven-secret-key-2024')
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+
+# Initialize Flask-SocketIO with flexible async mode
+# Try gevent first (for production), fallback to threading (for development)
+try:
+    import gevent
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+    print("🌟 Using gevent async mode for optimal performance")
+except ImportError:
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    print("🔧 Using threading async mode for development")
 
 # Initialize Supabase client for real-time database
 supabase = None
