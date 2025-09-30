@@ -18,15 +18,6 @@ except ImportError:
     PDF_AVAILABLE = False
     print("PDF generation not available - reportlab not installed")
 
-# Firebase imports
-try:
-    import firebase_admin
-    from firebase_admin import credentials, firestore
-    FIREBASE_AVAILABLE = True
-except ImportError:
-    FIREBASE_AVAILABLE = False
-    print("Firebase not available - using local storage")
-
 # Load environment variables
 try:
     from dotenv import load_dotenv
