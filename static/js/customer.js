@@ -1,4 +1,4 @@
-// Customer page functionality
+// Customer page functionality with improved error handling
 
 // DOM elements
 const callStaffBtn = document.getElementById('call-staff-btn');
@@ -8,6 +8,72 @@ const confirmationModal = document.getElementById('confirmation-modal');
 const callSuccessModal = document.getElementById('call-success-modal');
 const menuGrid = document.getElementById('menu-grid');
 const categoryBtns = document.querySelectorAll('.category-btn');
+
+// Initialize socket connection with proper error handling
+let socket;
+let connectionRetries = 0;
+const maxRetries = 3;
+
+function initializeSocket() {
+    try {
+        socket = io({
+            transports: ['websocket', 'polling'],
+            timeout: 5000,
+            reconnection: true,
+            reconnectionAttempts: maxRetries,
+            reconnectionDelay: 1000
+        });
+
+        socket.on('connect', function() {
+            console.log('✅ Customer socket connected');
+            socket.emit('join_customer_room', { table_number: tableNumber });
+            connectionRetries = 0;
+        });
+
+        socket.on('disconnect', function() {
+            console.log('❌ Customer socket disconnected');
+        });
+
+        socket.on('connect_error', function(error) {
+            connectionRetries++;
+            console.error('Socket connection error:', error);
+            
+            if (connectionRetries >= maxRetries) {
+                console.warn('Max connection retries reached. Some features may not work.');
+            }
+        });
+
+        socket.on('joined_customer_room', function() {
+            console.log('✅ Successfully joined customer room');
+        });
+
+        // Listen for order status updates
+        socket.on('order_status_updated', function(data) {
+            if (orderStatus && data.order_id === orderStatus.order_id) {
+                updateOrderStatus(data.status);
+                playNotificationSound();
+                
+                // Show notification for important status changes
+                if (data.status === 'ready') {
+                    showCustomerNotification('Your order is ready for pickup!', 'success');
+                } else if (data.status === 'preparing') {
+                    showCustomerNotification('Your order is being prepared', 'info');
+                }
+            }
+        });
+
+        socket.on('menu_updated', function(newItem) {
+            // Refresh page to show new menu item
+            location.reload();
+        });
+
+    } catch (error) {
+        console.error('Failed to initialize socket:', error);
+    }
+}
+
+// Initialize socket
+initializeSocket();
 
 // Cart functionality
 function updateQuantity(itemId, change) {
@@ -59,44 +125,171 @@ function filterMenuItems(category) {
     });
 }
 
-// Call staff functionality
+// Call staff functionality with improved reliability
 function callStaff() {
+    // Prevent multiple calls
+    if (callStaffBtn.disabled) return;
+    
     const data = {
         customer_name: customerName,
         table_number: tableNumber
     };
     
+    // Show loading state
+    const originalText = callStaffBtn.innerHTML;
     callStaffBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calling...';
     callStaffBtn.disabled = true;
+    
+    // Set timeout for the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
     fetch('/api/call-staff', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        signal: controller.signal
     })
-    .then(response => response.json())
+    .then(response => {
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
     .then(data => {
         if (data.status === 'success') {
             showModal(callSuccessModal);
+            showCustomerNotification('Staff has been notified!', 'success');
         } else {
-            alert(data.message || 'Failed to call staff. Please try again.');
+            throw new Error(data.message || 'Failed to call staff');
         }
     })
     .catch(error => {
         console.error('Error calling staff:', error);
-        alert('Failed to call staff. Please try again.');
+        
+        let errorMessage = 'Failed to call staff. Please try again.';
+        if (error.name === 'AbortError') {
+            errorMessage = 'Request timed out. Please check your connection and try again.';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        showCustomerNotification(errorMessage, 'error');
     })
     .finally(() => {
-        callStaffBtn.innerHTML = '<i class="fas fa-bell"></i><span>Call Staff</span>';
+        // Reset button state
+        callStaffBtn.innerHTML = originalText;
         callStaffBtn.disabled = false;
     });
 }
 
-// Order placement
+// Customer notification system
+function showCustomerNotification(message, type = 'info') {
+    // Remove any existing notifications
+    const existingNotifications = document.querySelectorAll('.customer-notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `customer-notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    // Styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 90vw;
+        font-weight: 500;
+        animation: slideInDown 0.3s ease;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOutUp 0.3s ease forwards';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 300);
+    }, 4000);
+}
+
+// Add CSS animations for notifications
+function addNotificationStyles() {
+    if (document.getElementById('notification-styles')) return;
+    
+    const styles = document.createElement('style');
+    styles.id = 'notification-styles';
+    styles.textContent = `
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        
+        @keyframes slideOutUp {
+            to {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-100%);
+            }
+        }
+        
+        .customer-notification .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+        
+        .customer-notification i {
+            font-size: 16px;
+        }
+    `;
+    
+    document.head.appendChild(styles);
+}
+
+// Order placement with improved error handling and validation
 function placeOrder() {
-    const orderItems = Object.values(cart).map(item => ({
+    // Prevent multiple submissions
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    if (placeOrderBtn.disabled) return;
+    
+    // Validate cart
+    const cartItems = Object.values(cart);
+    if (cartItems.length === 0) {
+        showCustomerNotification('Your cart is empty', 'error');
+        return;
+    }
+    
+    const orderItems = cartItems.map(item => ({
         id: item.id,
         name: item.name,
         price: item.price,
@@ -104,6 +297,12 @@ function placeOrder() {
     }));
     
     const total = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Validate total
+    if (total <= 0) {
+        showCustomerNotification('Invalid order total', 'error');
+        return;
+    }
     
     const orderData = {
         customer_name: customerName,
@@ -113,17 +312,31 @@ function placeOrder() {
     };
     
     // Show loading state
-    document.getElementById('place-order-btn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Placing Order...';
-    document.getElementById('place-order-btn').disabled = true;
+    const originalText = placeOrderBtn.innerHTML;
+    placeOrderBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Placing Order...';
+    placeOrderBtn.disabled = true;
+    
+    // Set timeout for the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for orders
     
     fetch('/api/place-order', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(orderData)
+        body: JSON.stringify(orderData),
+        signal: controller.signal
     })
-    .then(response => response.json())
+    .then(response => {
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
     .then(data => {
         if (data.status === 'success') {
             orderStatus = {
@@ -145,17 +358,29 @@ function placeOrder() {
             showModal(confirmationModal);
             
             playNotificationSound();
+            showCustomerNotification('Order placed successfully!', 'success');
+            
+            console.log('✅ Order placed successfully:', data.order_id);
         } else {
-            alert(data.message || 'Failed to place order. Please try again.');
+            throw new Error(data.message || 'Failed to place order');
         }
     })
     .catch(error => {
         console.error('Error placing order:', error);
-        alert('Failed to place order. Please try again.');
+        
+        let errorMessage = 'Failed to place order. Please try again.';
+        if (error.name === 'AbortError') {
+            errorMessage = 'Order submission timed out. Please check your connection and try again.';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        showCustomerNotification(errorMessage, 'error');
     })
     .finally(() => {
-        document.getElementById('place-order-btn').innerHTML = 'Place Order';
-        document.getElementById('place-order-btn').disabled = false;
+        // Reset button state
+        placeOrderBtn.innerHTML = originalText;
+        placeOrderBtn.disabled = false;
     });
 }
 
@@ -269,30 +494,84 @@ document.querySelectorAll('.modal').forEach(modal => {
     });
 });
 
-// Initialize
+// Initialize with proper error handling
 document.addEventListener('DOMContentLoaded', () => {
-    updateCartDisplay();
-    
-    // Show welcome animation
-    setTimeout(() => {
-        const header = document.querySelector('.header');
-        if (header) {
-            header.style.transform = 'translateY(0)';
-            header.style.opacity = '1';
-        }
-    }, 100);
-});
-
-// Socket event listeners
-socket.on('menu_updated', function(newItem) {
-    // Refresh page to show new menu item
-    location.reload();
-});
-
-// Handle page visibility change
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && orderStatus) {
-        // Page became visible, could check for order updates
-        console.log('Page visible, order status:', orderStatus.status);
+    try {
+        // Add notification styles
+        addNotificationStyles();
+        
+        // Update cart display
+        updateCartDisplay();
+        
+        // Load menu items from API for real-time updates
+        loadMenuItems();
+        
+        // Show welcome animation
+        setTimeout(() => {
+            const header = document.querySelector('.header');
+            if (header) {
+                header.style.transform = 'translateY(0)';
+                header.style.opacity = '1';
+            }
+        }, 100);
+        
+        console.log('✅ Customer page initialized successfully');
+    } catch (error) {
+        console.error('❌ Error initializing customer page:', error);
+        showCustomerNotification('Some features may not work properly. Please refresh the page.', 'error');
     }
 });
+
+// Load menu items for real-time updates
+function loadMenuItems() {
+    fetch('/api/menu')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            menuItems = data;
+            console.log('✅ Menu items loaded successfully');
+        })
+        .catch(error => {
+            console.error('Error loading menu items:', error);
+            // Don't show error notification for this as it's not critical
+        });
+}
+
+// Handle page visibility change for better performance
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        // Page became visible, refresh menu if needed
+        loadMenuItems();
+        
+        // Check order status if we have an active order
+        if (orderStatus) {
+            console.log('Page visible, order status:', orderStatus.status);
+        }
+    }
+});
+
+// Improved error handling for fetch requests
+function fetchWithRetry(url, options = {}, retries = 2) {
+    return fetch(url, options)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        })
+        .catch(error => {
+            if (retries > 0 && error.name !== 'AbortError') {
+                console.warn(`Retrying request to ${url}. Retries left: ${retries}`);
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve(fetchWithRetry(url, options, retries - 1));
+                    }, 1000);
+                });
+            }
+            throw error;
+        });
+}

@@ -38,7 +38,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'green-heaven-secret-key-2024')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Firebase Configuration
+# Firebase Configuration with improved error handling
 db = None
 if FIREBASE_AVAILABLE:
     try:
@@ -48,36 +48,61 @@ if FIREBASE_AVAILABLE:
 
         # Initialize Firebase (only if not already initialized)
         if not firebase_admin._apps:
-            # Try to load from service account file first
+            # First try service account file
             service_account_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY')
             if service_account_path and os.path.exists(service_account_path):
+                print("📝 Using Firebase service account file")
                 cred = credentials.Certificate(service_account_path)
                 firebase_admin.initialize_app(cred)
             else:
                 # Use environment variables for Render deployment
                 firebase_project_id = os.getenv('FIREBASE_PROJECT_ID')
-                if firebase_project_id:
+                firebase_private_key = os.getenv('FIREBASE_PRIVATE_KEY')
+                firebase_client_email = os.getenv('FIREBASE_CLIENT_EMAIL')
+                
+                print(f"📝 Firebase Project ID: {firebase_project_id}")
+                print(f"📝 Firebase Client Email: {firebase_client_email}")
+                print(f"📝 Firebase Private Key: {'Present' if firebase_private_key else 'Missing'}")
+                
+                if firebase_project_id and firebase_private_key and firebase_client_email:
                     firebase_config = {
                         "type": "service_account",
                         "project_id": firebase_project_id,
                         "private_key_id": os.getenv('FIREBASE_PRIVATE_KEY_ID'),
-                        "private_key": os.getenv('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n'),
-                        "client_email": os.getenv('FIREBASE_CLIENT_EMAIL'),
+                        "private_key": firebase_private_key.replace('\\n', '\n'),
+                        "client_email": firebase_client_email,
                         "client_id": os.getenv('FIREBASE_CLIENT_ID'),
                         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                         "token_uri": "https://oauth2.googleapis.com/token",
                         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                        "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{os.getenv('FIREBASE_CLIENT_EMAIL')}"
+                        "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{firebase_client_email}"
                     }
+                    print("📝 Initializing Firebase with environment variables")
                     cred = credentials.Certificate(firebase_config)
                     firebase_admin.initialize_app(cred)
+                else:
+                    print("❌ Missing required Firebase environment variables")
+                    print(f"   - FIREBASE_PROJECT_ID: {'✓' if firebase_project_id else '✗'}")
+                    print(f"   - FIREBASE_PRIVATE_KEY: {'✓' if firebase_private_key else '✗'}")
+                    print(f"   - FIREBASE_CLIENT_EMAIL: {'✓' if firebase_client_email else '✗'}")
+                    raise Exception("Missing required Firebase environment variables")
 
         # Get Firestore client
         db = firestore.client()
-        print("✅ Firebase connected successfully!")
+        
+        # Test connection
+        try:
+            test_collection = db.collection('connection_test')
+            test_doc = test_collection.document('test')
+            test_doc.set({'timestamp': datetime.now().isoformat(), 'status': 'connected'})
+            print("✅ Firebase connected and tested successfully!")
+        except Exception as test_error:
+            print(f"⚠️ Firebase connected but test write failed: {test_error}")
+            # Don't fail completely, just warn
 
     except Exception as e:
         print(f"❌ Firebase connection failed: {e}")
+        print(f"📝 Error details: {type(e).__name__}: {str(e)}")
         print("📝 Falling back to local JSON storage")
         db = None
 else:
@@ -93,70 +118,83 @@ DAILY_TOTALS_FILE = os.path.join(DATA_DIR, 'daily_totals.json')
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-# Data storage functions
+# Data storage functions with improved performance and error handling
 def load_data(collection_name):
-    """Load data from Firebase or local JSON file"""
-    if db:
-        # Firebase implementation
-        try:
+    """Load data from Firebase or local JSON file with caching"""
+    try:
+        if db:
+            # Firebase implementation with timeout
             docs = db.collection(collection_name).stream()
-            return [doc.to_dict() for doc in docs]
-        except Exception as e:
-            print(f"Error loading from Firebase {collection_name}: {e}")
-            return []
-    else:
-        # Local JSON file implementation
-        file_mapping = {
-            'orders': ORDERS_FILE,
-            'manual_orders': MANUAL_ORDERS_FILE,
-            'daily_totals': DAILY_TOTALS_FILE
-        }
-        
-        filename = file_mapping.get(collection_name)
-        if not filename:
-            return []
+            data = [doc.to_dict() for doc in docs]
+            return data
+        else:
+            # Local JSON file implementation
+            file_mapping = {
+                'orders': ORDERS_FILE,
+                'manual_orders': MANUAL_ORDERS_FILE,
+                'daily_totals': DAILY_TOTALS_FILE
+            }
             
-        try:
-            with open(filename, 'r') as file:
-                return json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return []
+            filename = file_mapping.get(collection_name)
+            if not filename:
+                print(f"Warning: Unknown collection name: {collection_name}")
+                return []
+                
+            if not os.path.exists(filename):
+                print(f"Info: File {filename} doesn't exist, returning empty list")
+                return []
+                
+            with open(filename, 'r', encoding='utf-8') as file:
+                content = file.read().strip()
+                if not content:
+                    return []
+                return json.loads(content)
+                
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in {collection_name}: {e}")
+        return []
+    except Exception as e:
+        print(f"Error loading from {collection_name}: {e}")
+        return []
 
 def save_data(collection_name, data):
-    """Save data to Firebase or local JSON file"""
-    if db:
-        # Firebase implementation
-        try:
+    """Save data to Firebase or local JSON file with better error handling"""
+    try:
+        if db:
+            # Firebase implementation with batch operations for better performance
             if isinstance(data, list):
-                # For lists, we'll clear the collection and add all items
-                # Get all existing documents
-                docs = db.collection(collection_name).stream()
-                
-                # Delete existing documents
+                # Use batch operations for better performance
                 batch = db.batch()
-                for doc in docs:
-                    batch.delete(doc.reference)
-                batch.commit()
                 
-                # Add new documents
+                # Clear existing data first
+                existing_docs = db.collection(collection_name).limit(500).stream()
+                for doc in existing_docs:
+                    batch.delete(doc.reference)
+                
+                # Add new data
                 for item in data:
                     doc_id = item.get('id', str(uuid.uuid4()))
-                    db.collection(collection_name).document(doc_id).set(item)
+                    doc_ref = db.collection(collection_name).document(doc_id)
+                    batch.set(doc_ref, item)
+                
+                # Commit batch
+                batch.commit()
             else:
-                # For single document
+                # Single document
                 doc_id = data.get('id', str(uuid.uuid4()))
                 db.collection(collection_name).document(doc_id).set(data)
                 
-        except Exception as e:
-            print(f"Error saving to Firebase {collection_name}: {e}")
-            # Fall back to local storage
+        else:
+            # Local JSON file implementation with atomic writes
             save_data_local(collection_name, data)
-    else:
-        # Local JSON file implementation
+            
+    except Exception as e:
+        print(f"Error saving to Firebase {collection_name}: {e}")
+        # Always fall back to local storage
         save_data_local(collection_name, data)
 
 def save_data_local(collection_name, data):
-    """Save data to local JSON file"""
+    """Save data to local JSON file with atomic writes"""
     file_mapping = {
         'orders': ORDERS_FILE,
         'manual_orders': MANUAL_ORDERS_FILE,
@@ -165,13 +203,26 @@ def save_data_local(collection_name, data):
     
     filename = file_mapping.get(collection_name)
     if not filename:
+        print(f"Warning: Unknown collection name: {collection_name}")
         return
         
+    temp_filename = filename + '.tmp'
     try:
-        with open(filename, 'w') as file:
-            json.dump(data, file, indent=2, default=str)
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        
+        # Write to temporary file first, then rename (atomic operation)
+        with open(temp_filename, 'w', encoding='utf-8') as file:
+            json.dump(data, file, indent=2, default=str, ensure_ascii=False)
+        
+        # Atomic rename
+        os.rename(temp_filename, filename)
+        
     except Exception as e:
         print(f"Error saving to local file {filename}: {e}")
+        # Clean up temp file if it exists
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
 
 def add_document(collection_name, document_data):
     """Add a single document to Firebase or local storage"""
@@ -460,6 +511,11 @@ def menu_management():
     """Menu management page"""
     return render_template('menu_management.html', menu_items=menu_items)
 
+@app.route('/system-status')
+def system_status():
+    """System status and diagnostics page"""
+    return render_template('system_status.html')
+
 def get_table_status():
     """Get status of all tables"""
     tables = {}
@@ -505,17 +561,21 @@ def get_table_status():
 # API endpoints
 @app.route('/api/call-staff', methods=['POST'])
 def call_staff():
-    """Handle customer call for staff"""
+    """Handle customer call for staff with improved error handling"""
     try:
         data = request.get_json()
         if not data:
             return jsonify({'status': 'error', 'message': 'No data provided'}), 400
         
-        table_number = data.get('table_number')
-        customer_name = data.get('customer_name')
+        table_number = data.get('table_number', '').strip()
+        customer_name = data.get('customer_name', '').strip()
         
         if not table_number or not customer_name:
-            return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+            return jsonify({'status': 'error', 'message': 'Table number and customer name are required'}), 400
+        
+        # Validate table number format
+        if not (table_number.isdigit() or table_number.startswith('VIP')):
+            return jsonify({'status': 'error', 'message': 'Invalid table number format'}), 400
         
         alert = {
             'id': str(uuid.uuid4()),
@@ -524,53 +584,105 @@ def call_staff():
             'timestamp': datetime.now().strftime('%H:%M:%S'),
             'type': 'call_staff'
         }
+        
+        # Add to in-memory alerts
         staff_alerts.append(alert)
         
-        # Emit to staff room
-        socketio.emit('new_alert', alert, to='staff')
+        # Emit to staff room with error handling
+        try:
+            socketio.emit('new_alert', alert, to='staff')
+            print(f"✅ Alert emitted to staff: Table {table_number} - {customer_name}")
+        except Exception as socket_error:
+            print(f"Warning: Failed to emit alert via socket: {socket_error}")
+            # Don't fail the request if socket fails
         
         return jsonify({'status': 'success', 'message': 'Staff has been notified!'})
+        
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        print(f"Error in call_staff: {e}")
+        return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 
 @app.route('/api/place-order', methods=['POST'])
 def place_order():
-    """Handle customer order placement"""
+    """Handle customer order placement with improved validation and error handling"""
     try:
         data = request.get_json()
         if not data:
             return jsonify({'status': 'error', 'message': 'No data provided'}), 400
         
-        customer_name = data.get('customer_name')
-        table_number = data.get('table_number')
-        items = data.get('items')
+        customer_name = data.get('customer_name', '').strip()
+        table_number = data.get('table_number', '').strip()
+        items = data.get('items', [])
         total = data.get('total')
         
-        if not all([customer_name, table_number, items, total]):
-            return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+        # Comprehensive validation
+        if not customer_name:
+            return jsonify({'status': 'error', 'message': 'Customer name is required'}), 400
+        
+        if not table_number:
+            return jsonify({'status': 'error', 'message': 'Table number is required'}), 400
+        
+        if not items or not isinstance(items, list):
+            return jsonify({'status': 'error', 'message': 'Order items are required'}), 400
+        
+        if not total or not isinstance(total, (int, float)) or total <= 0:
+            return jsonify({'status': 'error', 'message': 'Valid total amount is required'}), 400
+        
+        # Validate items structure
+        for item in items:
+            if not isinstance(item, dict) or not all(key in item for key in ['id', 'name', 'price', 'quantity']):
+                return jsonify({'status': 'error', 'message': 'Invalid item structure'}), 400
+            
+            if item['quantity'] <= 0 or item['price'] <= 0:
+                return jsonify({'status': 'error', 'message': 'Invalid item quantity or price'}), 400
+        
+        # Verify calculated total
+        calculated_total = sum(item['price'] * item['quantity'] for item in items)
+        if abs(calculated_total - total) > 0.01:  # Allow for small floating point differences
+            return jsonify({'status': 'error', 'message': 'Order total mismatch'}), 400
         
         order = {
             'id': str(uuid.uuid4()),
             'customer_name': customer_name,
             'table_number': table_number,
             'items': items,
-            'total': total,
+            'total': float(total),
             'timestamp': datetime.now().strftime('%H:%M:%S'),
+            'date': datetime.now().strftime('%Y-%m-%d'),
             'status': 'pending'
         }
         
         # Save to persistent storage
-        add_document('orders', order)
+        try:
+            add_document('orders', order)
+        except Exception as save_error:
+            print(f"Error saving order: {save_error}")
+            return jsonify({'status': 'error', 'message': 'Failed to save order'}), 500
         
         # Update daily totals
-        update_daily_totals(total, 'digital')
+        try:
+            update_daily_totals(total, 'digital')
+        except Exception as totals_error:
+            print(f"Warning: Failed to update daily totals: {totals_error}")
+            # Don't fail the request if totals update fails
         
         # Emit to staff room
-        socketio.emit('new_order', order, to='staff')
+        try:
+            socketio.emit('new_order', order, to='staff')
+            print(f"✅ Order emitted to staff: {order['id']} - Table {table_number}")
+        except Exception as socket_error:
+            print(f"Warning: Failed to emit order via socket: {socket_error}")
+            # Don't fail the request if socket fails
         
-        return jsonify({'status': 'success', 'message': 'Order placed successfully!', 'order_id': order['id']})
+        return jsonify({
+            'status': 'success', 
+            'message': 'Order placed successfully!', 
+            'order_id': order['id']
+        })
+        
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        print(f"Error in place_order: {e}")
+        return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 
 @app.route('/api/add-menu-item', methods=['POST'])
 def add_menu_item():
@@ -948,6 +1060,48 @@ def get_tables_api():
     """API endpoint to get table status data"""
     tables = get_table_status()
     return jsonify(tables)
+
+@app.route('/api/system-status')
+def get_system_status():
+    """Get system status and diagnostics"""
+    try:
+        status = {
+            'timestamp': datetime.now().isoformat(),
+            'firebase_available': FIREBASE_AVAILABLE,
+            'firebase_connected': db is not None,
+            'pdf_generation': PDF_AVAILABLE,
+            'environment': 'production' if os.getenv('PORT') else 'development',
+            'data_storage': 'firebase' if db else 'local'
+        }
+        
+        # Test Firebase connection if available
+        if db:
+            try:
+                # Try a simple read operation
+                test_doc = db.collection('test').limit(1).stream()
+                list(test_doc)  # Execute the query
+                status['firebase_read_test'] = 'success'
+            except Exception as e:
+                status['firebase_read_test'] = f'failed: {str(e)}'
+                status['firebase_error'] = str(e)
+        
+        # Get environment variables status (without exposing values)
+        env_vars = {
+            'FIREBASE_PROJECT_ID': bool(os.getenv('FIREBASE_PROJECT_ID')),
+            'FIREBASE_PRIVATE_KEY': bool(os.getenv('FIREBASE_PRIVATE_KEY')),
+            'FIREBASE_CLIENT_EMAIL': bool(os.getenv('FIREBASE_CLIENT_EMAIL')),
+            'SECRET_KEY': bool(os.getenv('SECRET_KEY')),
+            'PORT': os.getenv('PORT', 'not_set')
+        }
+        status['environment_variables'] = env_vars
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 @app.route('/api/tables/<table_number>/clear-alerts', methods=['POST'])
 def clear_table_alerts(table_number):

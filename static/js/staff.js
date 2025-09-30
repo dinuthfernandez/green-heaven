@@ -1,10 +1,83 @@
 // Staff page functionality
 
-// Initialize Socket.IO
-const socket = io();
+// Initialize Socket.IO with error handling
+let socket;
+let connectionAttempts = 0;
+const maxConnectionAttempts = 5;
 
-// Join staff room for real-time updates
-socket.emit('join_staff_room');
+function initializeSocket() {
+    try {
+        socket = io({
+            transports: ['websocket', 'polling'],
+            timeout: 5000,
+            reconnection: true,
+            reconnectionAttempts: maxConnectionAttempts,
+            reconnectionDelay: 1000
+        });
+
+        // Join staff room for real-time updates
+        socket.on('connect', function() {
+            console.log('✅ Socket connected successfully');
+            socket.emit('join_staff_room');
+            connectionAttempts = 0;
+            showNotification('Connected to live updates', 'success');
+        });
+
+        socket.on('disconnect', function() {
+            console.log('❌ Socket disconnected');
+            showNotification('Lost connection to live updates', 'error');
+        });
+
+        socket.on('connect_error', function(error) {
+            connectionAttempts++;
+            console.error('Socket connection error:', error);
+            
+            if (connectionAttempts >= maxConnectionAttempts) {
+                showNotification('Unable to connect to live updates. Refresh page to retry.', 'error');
+            }
+        });
+
+        socket.on('joined_staff_room', function() {
+            console.log('✅ Successfully joined staff room');
+        });
+
+        // Socket event listeners for real-time updates
+        socket.on('new_alert', function(alert) {
+            console.log('📢 New alert received:', alert);
+            addNewAlert(alert);
+            loadTableData(); // Refresh table data to show alert
+        });
+
+        socket.on('new_order', function(order) {
+            console.log('🔔 New order received:', order);
+            addNewOrder(order);
+            loadTableData(); // Refresh table data to show new order
+        });
+
+        socket.on('order_status_updated', function(data) {
+            console.log('📝 Order status updated:', data);
+            updateOrderInDOM(data.order_id, data.status);
+            loadTableData(); // Refresh table data
+        });
+
+        socket.on('menu_updated', function(item) {
+            console.log('🍽️ Menu updated:', item);
+            loadMenu(); // Refresh menu display
+        });
+
+        socket.on('menu_item_deleted', function(data) {
+            console.log('🗑️ Menu item deleted:', data);
+            loadMenu(); // Refresh menu display
+        });
+
+    } catch (error) {
+        console.error('Failed to initialize socket:', error);
+        showNotification('Live updates unavailable. Some features may not work properly.', 'error');
+    }
+}
+
+// Initialize socket connection
+initializeSocket();
 
 // DOM elements
 const alertsContainer = document.getElementById('alerts-container');
@@ -21,6 +94,110 @@ let currentFilter = 'all';
 // Load initial data
 loadOrders();
 loadMenu();
+
+// Order management functions
+function loadOrders() {
+    fetch('/api/orders')
+        .then(response => response.json())
+        .then(orders => {
+            displayOrders(orders);
+            updateOrderStats();
+        })
+        .catch(error => {
+            console.error('Error loading orders:', error);
+            showNotification('Failed to load orders', 'error');
+        });
+}
+
+function loadMenu() {
+    fetch('/api/menu')
+        .then(response => response.json())
+        .then(menuItems => {
+            displayMenuItems(menuItems);
+        })
+        .catch(error => {
+            console.error('Error loading menu:', error);
+            showNotification('Failed to load menu', 'error');
+        });
+}
+
+function displayMenuItems(menuItems) {
+    const menuGrid = document.getElementById('menu-grid');
+    if (!menuGrid) return;
+    
+    menuGrid.innerHTML = menuItems.map(item => `
+        <div class="menu-item-card" data-item-id="${item.id}">
+            ${item.image ? 
+                `<img src="${item.image}" alt="${item.name}" class="menu-item-image">` :
+                `<div class="menu-item-placeholder">
+                    <i class="fas fa-image"></i>
+                </div>`
+            }
+            <div class="menu-item-info">
+                <h4>${item.name}</h4>
+                <p class="menu-item-category">${item.category}</p>
+                <p class="menu-item-description">${item.description}</p>
+                <span class="menu-item-price">LKR ${item.price.toFixed(2)}</span>
+            </div>
+            <div class="menu-item-actions">
+                <button class="btn-toggle-availability" 
+                        onclick="toggleItemAvailability('${item.id}', ${item.available !== false})"
+                        title="${item.available !== false ? 'Mark as unavailable' : 'Mark as available'}">
+                    <i class="fas fa-${item.available !== false ? 'eye-slash' : 'eye'}"></i>
+                </button>
+                <button class="btn-delete-item" 
+                        onclick="deleteMenuItem('${item.id}')"
+                        title="Delete item">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleItemAvailability(itemId, currentlyAvailable) {
+    fetch(`/api/menu-item/${itemId}/availability`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ available: !currentlyAvailable })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            loadMenu(); // Refresh menu display
+            showNotification(`Item ${!currentlyAvailable ? 'enabled' : 'disabled'} successfully`, 'success');
+        } else {
+            showNotification('Failed to update item availability', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating item availability:', error);
+        showNotification('Failed to update item availability', 'error');
+    });
+}
+
+function deleteMenuItem(itemId) {
+    if (!confirm('Are you sure you want to delete this menu item?')) return;
+    
+    fetch(`/api/menu-item/${itemId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            loadMenu(); // Refresh menu display
+            showNotification('Menu item deleted successfully', 'success');
+        } else {
+            showNotification('Failed to delete menu item', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting menu item:', error);
+        showNotification('Failed to delete menu item', 'error');
+    });
+}
 
 // Table Management Functions
 let tableData = [];
@@ -223,8 +400,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+function updateOrderInDOM(orderId, newStatus) {
+    const orderElement = document.querySelector(`[data-order-id="${orderId}"]`);
+    if (orderElement) {
+        const statusElement = orderElement.querySelector('.order-status');
+        if (statusElement) {
+            statusElement.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+            statusElement.className = `order-status status-${newStatus}`;
+        }
+        
+        // Update action buttons
+        updateOrderActionButtons(orderElement, newStatus);
+        
+        // If current filter doesn't match, hide the order
+        if (currentFilter !== 'all' && currentFilter !== newStatus) {
+            orderElement.style.display = 'none';
+        } else {
+            orderElement.style.display = 'block';
+        }
+    }
+    
+    // Update order statistics
+    updateOrderStats();
+}
+
 // Display orders
 function displayOrders(orders) {
+    if (!ordersContainer) {
+        console.error('Orders container not found');
+        return;
+    }
+    
     const filteredOrders = currentFilter === 'all' ? orders : orders.filter(order => order.status === currentFilter);
     
     if (filteredOrders.length === 0) {
@@ -538,24 +744,105 @@ function addNewOrder(order) {
     }
 }
 
-// Initialize page
+// Initialize page with proper error handling
 document.addEventListener('DOMContentLoaded', function() {
-    loadOrders();
-    updateAlertCount();
-    
-    // Filter button event listeners
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterOrders(btn.dataset.status);
-        });
+    try {
+        // Initialize core functionality
+        initializeSocket();
+        loadInitialData();
+        setupEventListeners();
+        setupAutoRefresh();
+        
+        // Update alert count
+        updateAlertCount();
+        
+        console.log('✅ Staff dashboard initialized successfully');
+    } catch (error) {
+        console.error('❌ Error initializing staff dashboard:', error);
+        showNotification('Failed to initialize dashboard. Please refresh the page.', 'error');
+    }
+});
+
+function loadInitialData() {
+    // Load all data in parallel for better performance
+    Promise.all([
+        loadOrders(),
+        loadMenu(),
+        loadTableData(),
+        loadManualOrders(),
+        loadDailyTotals()
+    ]).catch(error => {
+        console.error('Error loading initial data:', error);
+        showNotification('Some data failed to load. Please refresh the page.', 'error');
     });
+}
+
+function setupEventListeners() {
+    // Filter button event listeners
+    if (filterBtns.length > 0) {
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterOrders(btn.dataset.status);
+            });
+        });
+    }
     
-    // Auto-refresh every 30 seconds
+    // Form event listeners
+    if (addMenuForm) {
+        addMenuForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            addMenuItem();
+        });
+    }
+    
+    if (manualOrderForm) {
+        manualOrderForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handleManualOrderSubmission();
+        });
+    }
+    
+    if (generateReportForm) {
+        setupReportGeneration();
+    }
+}
+
+function setupAutoRefresh() {
+    // Staggered refresh intervals to reduce server load
+    
+    // Fast refresh for critical data (orders, alerts)
     setInterval(() => {
         loadOrders();
         updateAlertCount();
-    }, 30000);
-});
+    }, 10000); // Every 10 seconds
+    
+    // Medium refresh for table data
+    setInterval(() => {
+        if (document.getElementById('tables-grid')) {
+            loadTableData();
+        }
+    }, 15000); // Every 15 seconds
+    
+    // Slow refresh for less critical data
+    setInterval(() => {
+        loadManualOrders();
+        loadDailyTotals();
+    }, 30000); // Every 30 seconds
+    
+    // Handle browser visibility change for immediate refresh when page becomes visible
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            // Page became visible, refresh critical data immediately
+            setTimeout(() => {
+                loadOrders();
+                if (document.getElementById('tables-grid')) {
+                    loadTableData();
+                }
+                updateAlertCount();
+            }, 500); // Small delay to ensure page is fully active
+        }
+    });
+}
 
 function updateAlertCount() {
     const alertElements = alertsContainer.querySelectorAll('.alert-item');
@@ -707,9 +994,14 @@ document.addEventListener('visibilitychange', () => {
 const manualOrderForm = document.getElementById('add-manual-order-form');
 const manualOrdersContainer = document.getElementById('manual-orders-container');
 
-if (manualOrderForm) {
-    manualOrderForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+async function handleManualOrderSubmission() {
+    const submitBtn = manualOrderForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+        // Show loading state
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding Order...';
+        submitBtn.disabled = true;
         
         const customerName = document.getElementById('manual-customer-name').value.trim();
         const tableNumber = document.getElementById('manual-table-number').value.trim();
@@ -717,43 +1009,55 @@ if (manualOrderForm) {
         const total = parseFloat(document.getElementById('manual-total').value);
         const notes = document.getElementById('manual-notes').value.trim();
         
+        // Validation
         if (!itemsDescription || total <= 0) {
-            alert('Please provide items description and total amount');
+            showNotification('Please provide items description and total amount', 'error');
             return;
         }
         
-        try {
-            const response = await fetch('/api/manual-order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    customer_name: customerName,
-                    table_number: tableNumber,
-                    items_description: itemsDescription,
-                    total: total,
-                    notes: notes
-                })
-            });
+        const response = await fetch('/api/manual-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                customer_name: customerName,
+                table_number: tableNumber,
+                items_description: itemsDescription,
+                total: total,
+                notes: notes
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showNotification('Manual order added successfully!', 'success');
             
-            const data = await response.json();
+            // Reset form with default values
+            manualOrderForm.reset();
+            document.getElementById('manual-customer-name').value = 'Walk-in Customer';
+            document.getElementById('manual-table-number').value = 'Takeout';
             
-            if (data.status === 'success') {
-                alert('Manual order added successfully!');
-                manualOrderForm.reset();
-                document.getElementById('manual-customer-name').value = 'Walk-in Customer';
-                document.getElementById('manual-table-number').value = 'Takeout';
-                loadManualOrders();
-                loadDailyTotals();
-            } else {
-                alert('Error: ' + data.message);
+            // Refresh related data
+            loadManualOrders();
+            loadDailyTotals();
+            
+            // Refresh table data if needed
+            if (tableNumber !== 'Takeout') {
+                loadTableData();
             }
-        } catch (error) {
-            console.error('Error adding manual order:', error);
-            alert('Error adding manual order');
+        } else {
+            showNotification('Error: ' + data.message, 'error');
         }
-    });
+    } catch (error) {
+        console.error('Error adding manual order:', error);
+        showNotification('Error adding manual order', 'error');
+    } finally {
+        // Reset button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
 }
 
 // Load manual orders for today

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Heaven - System Status</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #27AE60;
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #27AE60;
+            background: #f8f9fa;
+        }
+        .status-card.warning {
+            border-left-color: #f39c12;
+            background: #fef9e7;
+        }
+        .status-card.error {
+            border-left-color: #e74c3c;
+            background: #fdeaea;
+        }
+        .status-card h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .actions {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 0 10px;
+            background: #27AE60;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #219a52;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #3498db;
+        }
+        .btn-secondary:hover {
+            background: #2980b9;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        .timestamp {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 System Status</h1>
+            <p>Green Heaven Restaurant Management System</p>
+        </div>
+
+        <div id="status-content" class="loading">
+            <p>Loading system status...</p>
+        </div>
+
+        <div class="actions">
+            <a href="/" class="btn">← Back to App</a>
+            <a href="/staff" class="btn btn-secondary">Staff Dashboard</a>
+            <button onclick="refreshStatus()" class="btn btn-secondary">🔄 Refresh</button>
+        </div>
+    </div>
+
+    <script>
+        async function loadSystemStatus() {
+            try {
+                const response = await fetch('/api/system-status');
+                const status = await response.json();
+                
+                displayStatus(status);
+            } catch (error) {
+                document.getElementById('status-content').innerHTML = `
+                    <div class="status-card error">
+                        <h3>❌ Error Loading Status</h3>
+                        <p>Failed to load system status: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayStatus(status) {
+            const content = document.getElementById('status-content');
+            
+            let html = '<div class="status-grid">';
+            
+            // System Overview
+            const systemClass = status.firebase_connected ? 'status-card' : 'status-card warning';
+            html += `
+                <div class="${systemClass}">
+                    <h3>🖥️ System Overview</h3>
+                    <div class="status-item">
+                        <span>Environment</span>
+                        <span class="status-badge status-success">${status.environment}</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Data Storage</span>
+                        <span class="status-badge ${status.data_storage === 'firebase' ? 'status-success' : 'status-warning'}">${status.data_storage}</span>
+                    </div>
+                    <div class="status-item">
+                        <span>PDF Generation</span>
+                        <span class="status-badge ${status.pdf_generation ? 'status-success' : 'status-warning'}">${status.pdf_generation ? 'Available' : 'Unavailable'}</span>
+                    </div>
+                </div>
+            `;
+
+            // Firebase Status
+            const firebaseClass = status.firebase_connected ? 'status-card' : 'status-card error';
+            html += `
+                <div class="${firebaseClass}">
+                    <h3>🔥 Firebase Status</h3>
+                    <div class="status-item">
+                        <span>Firebase Available</span>
+                        <span class="status-badge ${status.firebase_available ? 'status-success' : 'status-error'}">${status.firebase_available ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Connection</span>
+                        <span class="status-badge ${status.firebase_connected ? 'status-success' : 'status-error'}">${status.firebase_connected ? 'Connected' : 'Disconnected'}</span>
+                    </div>
+                    ${status.firebase_read_test ? `
+                        <div class="status-item">
+                            <span>Read Test</span>
+                            <span class="status-badge ${status.firebase_read_test === 'success' ? 'status-success' : 'status-error'}">${status.firebase_read_test}</span>
+                        </div>
+                    ` : ''}
+                    ${status.firebase_error ? `
+                        <div style="margin-top: 10px; padding: 10px; background: #f8d7da; border-radius: 5px; color: #721c24; font-size: 0.9em;">
+                            <strong>Error:</strong> ${status.firebase_error}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Environment Variables
+            html += `
+                <div class="status-card">
+                    <h3>🔐 Environment Variables</h3>
+            `;
+            
+            for (const [key, value] of Object.entries(status.environment_variables)) {
+                const isPresent = typeof value === 'boolean' ? value : value !== 'not_set';
+                html += `
+                    <div class="status-item">
+                        <span>${key}</span>
+                        <span class="status-badge ${isPresent ? 'status-success' : 'status-error'}">${isPresent ? 'Set' : 'Missing'}</span>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            html += '</div>';
+
+            // Timestamp
+            html += `
+                <div class="timestamp">
+                    Last updated: ${new Date(status.timestamp).toLocaleString()}
+                </div>
+            `;
+
+            content.innerHTML = html;
+        }
+
+        function refreshStatus() {
+            document.getElementById('status-content').innerHTML = '<div class="loading"><p>Refreshing status...</p></div>';
+            loadSystemStatus();
+        }
+
+        // Load status on page load
+        loadSystemStatus();
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadSystemStatus, 30000);
+    </script>
+</body>
+</html>
