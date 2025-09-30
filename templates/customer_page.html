@@ -168,6 +168,21 @@
             };
             document.head.appendChild(script);
         })();
+        
+        // Load Supabase client for real-time subscriptions
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+            script.async = true;
+            script.onload = function() {
+                console.log('🚀 Supabase client loaded for real-time updates');
+                initializeSupabaseRealtime();
+            };
+            script.onerror = function() {
+                console.warn('⚠️ Supabase client failed to load');
+            };
+            document.head.appendChild(script);
+        })();
     </script>
     <script>
         // Customer data - available immediately
@@ -178,6 +193,83 @@
         // Cart data
         let cart = {};
         let orderStatus = null;
+        
+        // Supabase real-time configuration
+        const supabaseUrl = '{{ supabase_url or "" }}';
+        const supabaseAnonKey = '{{ supabase_anon_key or "" }}';
+        let supabaseClient = null;
+        
+        // Initialize Supabase real-time subscriptions
+        function initializeSupabaseRealtime() {
+            if (window.supabase && supabaseUrl && supabaseAnonKey) {
+                try {
+                    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                    
+                    // Subscribe to real-time order updates
+                    const ordersSubscription = supabaseClient
+                        .channel('orders-channel')
+                        .on('postgres_changes', 
+                            { 
+                                event: '*', 
+                                schema: 'public', 
+                                table: 'orders',
+                                filter: `table_number=eq.${tableNumber}`
+                            }, 
+                            (payload) => {
+                                console.log('🔄 Real-time order update:', payload);
+                                handleOrderUpdate(payload);
+                            }
+                        )
+                        .subscribe();
+                    
+                    // Subscribe to staff call updates
+                    const staffCallsSubscription = supabaseClient
+                        .channel('staff-calls-channel')
+                        .on('postgres_changes',
+                            {
+                                event: '*',
+                                schema: 'public',
+                                table: 'staff_calls',
+                                filter: `table_number=eq.${tableNumber}`
+                            },
+                            (payload) => {
+                                console.log('🔔 Staff call update:', payload);
+                                handleStaffCallUpdate(payload);
+                            }
+                        )
+                        .subscribe();
+                    
+                    console.log('✅ Supabase real-time subscriptions active');
+                    showCustomerNotification('Real-time updates connected! ⚡', 'success', 2000);
+                    
+                } catch (error) {
+                    console.error('❌ Failed to initialize Supabase real-time:', error);
+                }
+            }
+        }
+        
+        // Handle real-time order updates
+        function handleOrderUpdate(payload) {
+            if (payload.eventType === 'UPDATE' && orderStatus) {
+                const updatedOrder = payload.new;
+                if (updatedOrder.id === orderStatus.order_id) {
+                    updateOrderStatus(updatedOrder.status);
+                    playNotificationSound();
+                }
+            }
+        }
+        
+        // Handle real-time staff call updates
+        function handleStaffCallUpdate(payload) {
+            if (payload.eventType === 'UPDATE') {
+                const updatedCall = payload.new;
+                if (updatedCall.status === 'acknowledged') {
+                    showCustomerNotification('Staff acknowledged your call! 👨‍🍳', 'success', 3000);
+                } else if (updatedCall.status === 'resolved') {
+                    showCustomerNotification('Thank you! Call resolved. ✅', 'success', 2000);
+                }
+            }
+        }
         
         // Menu is already loaded, no need for additional fetch
         console.log('📱 Customer page ready for', customerName, 'at table', tableNumber);

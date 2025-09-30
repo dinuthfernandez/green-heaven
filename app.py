@@ -18,6 +18,15 @@ except ImportError:
     PDF_AVAILABLE = False
     print("PDF generation not available - reportlab not installed")
 
+# Supabase imports for real-time database
+try:
+    from supabase import create_client, Client
+    SUPABASE_AVAILABLE = True
+    print("🚀 Supabase client available - enabling real-time database!")
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    print("📦 Supabase not available - using local storage fallback")
+
 # Load environment variables
 try:
     from dotenv import load_dotenv
@@ -28,6 +37,48 @@ except ImportError:
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'green-heaven-secret-key-2024')
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Initialize Supabase client for real-time database
+supabase: Client = None
+if SUPABASE_AVAILABLE:
+    supabase_url = os.getenv('SUPABASE_URL')
+    supabase_key = os.getenv('SUPABASE_ANON_KEY')
+    
+    if supabase_url and supabase_key:
+        try:
+            supabase = create_client(supabase_url, supabase_key)
+            print(f"✅ Supabase connected: {supabase_url}")
+            print("🔄 Real-time database active - lightning fast performance!")
+        except Exception as e:
+            print(f"❌ Supabase connection failed: {e}")
+            print("📁 Falling back to local storage")
+            supabase = None
+    else:
+        print("⚠️ Supabase credentials not found - using local storage")
+        print("💡 Add SUPABASE_URL and SUPABASE_ANON_KEY to environment variables")
+
+# Fallback to file-based storage if Supabase not available
+if not supabase:
+    print("📂 Using lightweight file-based storage")
+    # Simple file-based storage - perfect for lightweight restaurant data
+    import threading
+    import time
+    from pathlib import Path
+
+    # Thread lock for safe file operations
+    storage_lock = threading.Lock()
+
+    # Data storage configuration
+    DATA_DIR = 'data'
+    ORDERS_FILE = os.path.join(DATA_DIR, 'orders.json')
+    MANUAL_ORDERS_FILE = os.path.join(DATA_DIR, 'manual_orders.json')
+    DAILY_TOTALS_FILE = os.path.join(DATA_DIR, 'daily_totals.json')
+    BACKUP_DIR = os.path.join(DATA_DIR, 'backups')
+
+    # Create data directories
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    print("📁 Local storage initialized with automatic backups")
 
 # Simple file-based storage - perfect for lightweight restaurant data
 import threading
@@ -61,9 +112,120 @@ DAILY_TOTALS_FILE = os.path.join(DATA_DIR, 'daily_totals.json')
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-# Data storage functions with improved performance and error handling
+# Data storage functions - Supabase (real-time) or File-based (fallback)
 def load_data(collection_name):
+    """Load data from Supabase or local storage"""
+    if supabase:
+        try:
+            # Use Supabase for real-time data
+            table_mapping = {
+                'orders': 'orders',
+                'manual_orders': 'manual_orders', 
+                'daily_totals': 'daily_totals',
+                'staff_calls': 'staff_calls'
+            }
+            
+            table_name = table_mapping.get(collection_name)
+            if not table_name:
+                print(f"Warning: Unknown collection: {collection_name}")
+                return []
+            
+            response = supabase.table(table_name).select("*").order('created_at', desc=True).execute()
+            data = response.data if response.data else []
+            print(f"📊 Loaded {len(data)} items from Supabase {table_name}")
+            return data
+            
+        except Exception as e:
+            print(f"❌ Supabase error for {collection_name}: {e}")
+            print("📁 Falling back to local storage")
+            return load_data_local(collection_name)
+    else:
+        # Use local file storage
+        return load_data_local(collection_name)
+
+def load_data_local(collection_name):
     """Load data from local JSON file with thread safety"""
+    try:
+        with storage_lock:
+            file_mapping = {
+                'orders': ORDERS_FILE,
+                'manual_orders': MANUAL_ORDERS_FILE,
+                'daily_totals': DAILY_TOTALS_FILE
+            }
+            
+            filename = file_mapping.get(collection_name)
+            if not filename:
+                print(f"Warning: Unknown collection name: {collection_name}")
+                return []
+                
+            if not os.path.exists(filename):
+                print(f"Info: File {filename} doesn't exist, returning empty list")
+                return []
+                
+            with open(filename, 'r', encoding='utf-8') as file:
+                content = file.read().strip()
+                if not content:
+                    return []
+                return json.loads(content)
+                
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in {collection_name}: {e}")
+        # Try to recover from backup
+        backup_data = load_backup_data(collection_name)
+        if backup_data:
+            print(f"📦 Recovered {len(backup_data)} items from backup")
+            return backup_data
+        return []
+    except Exception as e:
+        print(f"Error loading {collection_name}: {e}")
+        return []
+
+def save_data(collection_name, data):
+    """Save data to Supabase or local storage"""
+    if supabase:
+        try:
+            # Use Supabase for real-time updates
+            table_mapping = {
+                'orders': 'orders',
+                'manual_orders': 'manual_orders',
+                'daily_totals': 'daily_totals', 
+                'staff_calls': 'staff_calls'
+            }
+            
+            table_name = table_mapping.get(collection_name)
+            if not table_name:
+                print(f"Warning: Unknown collection: {collection_name}")
+                return
+            
+            # For daily_totals, use upsert to handle updates
+            if collection_name == 'daily_totals' and data:
+                for item in data:
+                    if 'id' in item:
+                        # Update existing record
+                        supabase.table(table_name).update(item).eq('id', item['id']).execute()
+                    else:
+                        # Insert new record
+                        supabase.table(table_name).insert(item).execute()
+            else:
+                # For other collections, insert new records
+                if data:
+                    supabase.table(table_name).insert(data if isinstance(data, list) else [data]).execute()
+            
+            print(f"✅ Saved {len(data) if isinstance(data, list) else 1} items to Supabase {table_name}")
+            
+            # Also save locally as backup
+            save_data_local(collection_name, data)
+            
+        except Exception as e:
+            print(f"❌ Supabase save error for {collection_name}: {e}")
+            print("📁 Falling back to local storage")
+            save_data_local(collection_name, data)
+    else:
+        # Use local file storage
+        save_data_local(collection_name, data)
+
+def save_data_local(collection_name, data):
+    """Save data to local JSON file with thread safety and backup"""
     try:
         with storage_lock:
             file_mapping = {
@@ -95,51 +257,49 @@ def load_data(collection_name):
         print(f"Error loading from {collection_name}: {e}")
         return []
 
-def save_data(collection_name, data):
-    """Save data to local JSON file with automatic backup"""
+def save_data_local(collection_name, data):
+    """Save data to local JSON file with thread safety and backup"""
     try:
         with storage_lock:
             # Create backup before saving
             create_backup(collection_name)
             
-            # Save to main file
-            save_data_local(collection_name, data)
+            file_mapping = {
+                'orders': ORDERS_FILE,
+                'manual_orders': MANUAL_ORDERS_FILE,
+                'daily_totals': DAILY_TOTALS_FILE
+            }
             
-            print(f"✅ Saved {len(data) if isinstance(data, list) else 1} items to {collection_name}")
+            filename = file_mapping.get(collection_name)
+            if not filename:
+                print(f"Warning: Unknown collection name: {collection_name}")
+                return
+            
+            # Atomic write using temporary file
+            temp_filename = filename + '.tmp'
+            
+            with open(temp_filename, 'w', encoding='utf-8') as file:
+                json.dump(data, file, indent=2, ensure_ascii=False, default=str)
+            
+            # Atomic move (replaces original file)
+            os.replace(temp_filename, filename)
             
     except Exception as e:
-        print(f"Error saving to {collection_name}: {e}")
-
-def save_data_local(collection_name, data):
-    """Save data to local JSON file with atomic writes"""
-    file_mapping = {
-        'orders': ORDERS_FILE,
-        'manual_orders': MANUAL_ORDERS_FILE,
-        'daily_totals': DAILY_TOTALS_FILE
-    }
-    
-    filename = file_mapping.get(collection_name)
-    if not filename:
-        print(f"Warning: Unknown collection name: {collection_name}")
-        return
-        
-    temp_filename = filename + '.tmp'
-    try:
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        
-        # Write to temporary file first, then rename (atomic operation)
-        with open(temp_filename, 'w', encoding='utf-8') as file:
-            json.dump(data, file, indent=2, default=str, ensure_ascii=False)
-        
-        # Atomic rename
-        os.rename(temp_filename, filename)
-        
-    except Exception as e:
-        print(f"Error saving to local file {filename}: {e}")
+        print(f"Error saving to local {collection_name}: {e}")
         # Clean up temp file if it exists
-        if os.path.exists(temp_filename):
-            os.remove(temp_filename)
+        try:
+            file_mapping = {
+                'orders': ORDERS_FILE,
+                'manual_orders': MANUAL_ORDERS_FILE,
+                'daily_totals': DAILY_TOTALS_FILE
+            }
+            filename = file_mapping.get(collection_name)
+            if filename:
+                temp_filename = filename + '.tmp'
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+        except:
+            pass
 
 def create_backup(collection_name):
     """Create backup of data file"""
@@ -204,21 +364,102 @@ def load_backup_data(collection_name):
         return []
 
 def add_document(collection_name, document_data):
+    """Add a single document to Supabase or local storage"""
+    if supabase:
+        try:
+            # Use Supabase for real-time database
+            table_mapping = {
+                'orders': 'orders',
+                'manual_orders': 'manual_orders',
+                'daily_totals': 'daily_totals',
+                'staff_calls': 'staff_calls'
+            }
+            
+            table_name = table_mapping.get(collection_name)
+            if not table_name:
+                print(f"Warning: Unknown collection: {collection_name}")
+                return
+            
+            # Ensure document has required fields
+            if 'id' not in document_data:
+                document_data['id'] = str(uuid.uuid4())
+            
+            if 'created_at' not in document_data:
+                document_data['created_at'] = datetime.now().isoformat()
+            
+            # Insert into Supabase
+            response = supabase.table(table_name).insert(document_data).execute()
+            print(f"✅ Added document to Supabase {table_name}: {document_data.get('id', 'no-id')}")
+            
+            # Emit real-time update to all connected clients
+            socketio.emit('database_updated', {
+                'table': table_name,
+                'action': 'insert',
+                'data': document_data
+            })
+            
+        except Exception as e:
+            print(f"❌ Supabase add error for {collection_name}: {e}")
+            print("📁 Falling back to local storage")
+            add_document_local(collection_name, document_data)
+    else:
+        add_document_local(collection_name, document_data)
+
+def add_document_local(collection_name, document_data):
     """Add a single document to local storage"""
     try:
         # Local storage - append to existing data
-        current_data = load_data(collection_name)
+        current_data = load_data_local(collection_name)
         current_data.append(document_data)
-        save_data(collection_name, current_data)
-        print(f"✅ Added document to {collection_name}: {document_data.get('id', 'no-id')}")
+        save_data_local(collection_name, current_data)
+        print(f"✅ Added document to local {collection_name}: {document_data.get('id', 'no-id')}")
     except Exception as e:
-        print(f"Error adding document to {collection_name}: {e}")
+        print(f"Error adding document to local {collection_name}: {e}")
 
 def update_document(collection_name, document_id, update_data):
+    """Update a document in Supabase or local storage"""
+    if supabase:
+        try:
+            # Use Supabase for real-time updates
+            table_mapping = {
+                'orders': 'orders',
+                'manual_orders': 'manual_orders',
+                'daily_totals': 'daily_totals',
+                'staff_calls': 'staff_calls'
+            }
+            
+            table_name = table_mapping.get(collection_name)
+            if not table_name:
+                print(f"Warning: Unknown collection: {collection_name}")
+                return
+                
+            # Add updated_at timestamp
+            update_data['updated_at'] = datetime.now().isoformat()
+            
+            # Update in Supabase
+            response = supabase.table(table_name).update(update_data).eq('id', document_id).execute()
+            print(f"✅ Updated document in Supabase {table_name}: {document_id}")
+            
+            # Emit real-time update to all connected clients
+            socketio.emit('database_updated', {
+                'table': table_name,
+                'action': 'update', 
+                'id': document_id,
+                'data': update_data
+            })
+            
+        except Exception as e:
+            print(f"❌ Supabase update error for {collection_name}: {e}")
+            print("📁 Falling back to local storage")
+            update_document_local(collection_name, document_id, update_data)
+    else:
+        update_document_local(collection_name, document_id, update_data)
+
+def update_document_local(collection_name, document_id, update_data):
     """Update a document in local storage"""
     try:
         # Local storage - update in memory and save
-        current_data = load_data(collection_name)
+        current_data = load_data_local(collection_name)
         updated = False
         
         for item in current_data:
@@ -228,13 +469,13 @@ def update_document(collection_name, document_id, update_data):
                 break
                 
         if updated:
-            save_data(collection_name, current_data)
-            print(f"✅ Updated document in {collection_name}: {document_id}")
+            save_data_local(collection_name, current_data)
+            print(f"✅ Updated document in local {collection_name}: {document_id}")
         else:
             print(f"Warning: Document not found for update: {document_id}")
             
     except Exception as e:
-        print(f"Error updating document in {collection_name}: {e}")
+        print(f"Error updating document in local {collection_name}: {e}")
 
 def get_today_date():
     """Get today's date in YYYY-MM-DD format"""
@@ -379,10 +620,16 @@ def customer_page():
     if not customer_name or not table_number:
         return redirect(url_for('customer_entry'))
     
+    # Pass Supabase config for real-time subscriptions
+    supabase_url = os.getenv('SUPABASE_URL', '') if supabase else ''
+    supabase_anon_key = os.getenv('SUPABASE_ANON_KEY', '') if supabase else ''
+    
     return render_template('customer_page.html', 
                          customer_name=customer_name, 
                          table_number=table_number,
-                         menu_items=menu_items)
+                         menu_items=menu_items,
+                         supabase_url=supabase_url,
+                         supabase_anon_key=supabase_anon_key)
 
 # Routes for restaurant staff
 @app.route('/staff')
