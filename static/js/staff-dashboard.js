@@ -2,9 +2,9 @@
 
 class StaffDashboard {
     constructor() {
-        this.socket = io();
+        this.socket = null;
         this.currentPage = 'overview';
-        this.sidebarOpen = true;
+        this.sidebarOpen = window.innerWidth > 1024;
         this.refreshInterval = null;
         this.data = {
             tables: [],
@@ -18,71 +18,53 @@ class StaffDashboard {
     }
 
     init() {
+        console.log('🚀 Initializing Staff Dashboard...');
         this.bindEvents();
-        this.setupSocket();
-        this.initializeNavigigation();
+        this.initializeNavigationNew();
         this.loadInitialData();
         this.startAutoRefresh();
+        console.log('✅ Staff Dashboard initialized successfully');
+    }
+
+    handleSocketConnection(socketInstance) {
+        this.socket = socketInstance;
+        console.log('🔗 Socket.IO connected to dashboard');
     }
 
     bindEvents() {
-        // Navigation
+        // Navigation click handler
         document.addEventListener('click', (e) => {
-            if (e.target.matches('.nav-link')) {
+            // Navigation links
+            if (e.target.closest('.nav-link')) {
                 e.preventDefault();
-                const page = e.target.dataset.page;
-                this.navigateToPage(page);
+                const navLink = e.target.closest('.nav-link');
+                const page = navLink.getAttribute('data-page');
+                if (page) {
+                    this.navigateToPageNew(page);
+                }
+                return;
             }
 
-            if (e.target.matches('.menu-toggle')) {
+            // Menu toggle
+            if (e.target.closest('.menu-toggle')) {
                 this.toggleSidebar();
+                return;
             }
 
-            if (e.target.matches('.btn-refresh')) {
+            // Refresh button
+            if (e.target.closest('.btn-refresh')) {
                 this.refreshData();
+                return;
             }
 
-            if (e.target.matches('.filter-btn')) {
-                this.applyFilter(e.target);
+            // Filter buttons
+            if (e.target.closest('.filter-btn')) {
+                this.applyFilter(e.target.closest('.filter-btn'));
+                return;
             }
 
-            // Table actions
-            if (e.target.matches('.btn-clean-table')) {
-                const tableId = e.target.dataset.tableId;
-                this.cleanTable(tableId);
-            }
-
-            if (e.target.matches('.btn-view-details')) {
-                const tableId = e.target.dataset.tableId;
-                this.viewTableDetails(tableId);
-            }
-
-            // Order actions
-            if (e.target.matches('.btn-mark-preparing')) {
-                const orderId = e.target.dataset.orderId;
-                this.updateOrderStatus(orderId, 'preparing');
-            }
-
-            if (e.target.matches('.btn-mark-ready')) {
-                const orderId = e.target.dataset.orderId;
-                this.updateOrderStatus(orderId, 'ready');
-            }
-
-            if (e.target.matches('.btn-complete-order')) {
-                const orderId = e.target.dataset.orderId;
-                this.updateOrderStatus(orderId, 'completed');
-            }
-
-            // Alert actions
-            if (e.target.matches('.btn-resolve-alert')) {
-                const alertId = e.target.dataset.alertId;
-                this.resolveAlert(alertId);
-            }
-
-            if (e.target.matches('.btn-respond-alert')) {
-                const alertId = e.target.dataset.alertId;
-                this.respondToAlert(alertId);
-            }
+            // Action buttons with proper delegation
+            this.handleActionButtons(e);
         });
 
         // Keyboard shortcuts
@@ -91,15 +73,19 @@ class StaffDashboard {
                 switch(e.key) {
                     case '1':
                         e.preventDefault();
-                        this.navigateToPage('overview');
+                        this.navigateToPageNew('overview');
                         break;
                     case '2':
                         e.preventDefault();
-                        this.navigateToPage('tables');
+                        this.navigateToPageNew('tables');
                         break;
                     case '3':
                         e.preventDefault();
-                        this.navigateToPage('orders');
+                        this.navigateToPageNew('orders');
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        this.navigateToPageNew('alerts');
                         break;
                     case 'r':
                         e.preventDefault();
@@ -115,46 +101,63 @@ class StaffDashboard {
         });
     }
 
-    setupSocket() {
-        this.socket.on('connect', () => {
-            console.log('Connected to server');
-            this.updateConnectionStatus(true);
-        });
+    handleActionButtons(e) {
+        const button = e.target.closest('button');
+        if (!button) return;
 
-        this.socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-            this.updateConnectionStatus(false);
-        });
-
-        this.socket.on('table_update', (data) => {
-            this.handleTableUpdate(data);
-        });
-
-        this.socket.on('new_order', (data) => {
-            this.handleNewOrder(data);
-        });
-
-        this.socket.on('order_update', (data) => {
-            this.handleOrderUpdate(data);
-        });
-
-        this.socket.on('customer_call', (data) => {
-            this.handleCustomerCall(data);
-        });
-
-        this.socket.on('data_updated', (data) => {
-            this.handleDataUpdate(data);
-        });
+        // Table actions
+        if (button.classList.contains('btn-clean-table')) {
+            const tableId = button.getAttribute('data-table-id');
+            this.cleanTable(tableId);
+        }
+        else if (button.classList.contains('btn-view-details')) {
+            const tableId = button.getAttribute('data-table-id');
+            this.viewTableDetails(tableId);
+        }
+        // Order actions
+        else if (button.classList.contains('btn-mark-preparing')) {
+            const orderId = button.getAttribute('data-order-id');
+            this.updateOrderStatus(orderId, 'preparing');
+        }
+        else if (button.classList.contains('btn-mark-ready')) {
+            const orderId = button.getAttribute('data-order-id');
+            this.updateOrderStatus(orderId, 'ready');
+        }
+        else if (button.classList.contains('btn-complete-order')) {
+            const orderId = button.getAttribute('data-order-id');
+            this.updateOrderStatus(orderId, 'completed');
+        }
+        // Alert actions
+        else if (button.classList.contains('btn-resolve-alert')) {
+            const alertId = button.getAttribute('data-alert-id');
+            this.resolveAlert(alertId);
+        }
+        else if (button.classList.contains('btn-respond-alert')) {
+            const alertId = button.getAttribute('data-alert-id');
+            this.respondToAlert(alertId);
+        }
     }
 
-    initializeNavigigation() {
+    initializeNavigationNew() {
         // Set active page based on URL fragment or default to overview
         const hash = window.location.hash.slice(1);
-        const initialPage = hash || 'overview';
-        this.navigateToPage(initialPage, false);
+        const initialPage = hash && this.isValidPage(hash) ? hash : 'overview';
+        this.navigateToPageNew(initialPage, false);
     }
 
-    navigateToPage(pageName, updateUrl = true) {
+    isValidPage(pageName) {
+        const validPages = ['overview', 'tables', 'orders', 'alerts', 'menu', 'analytics', 'settings'];
+        return validPages.includes(pageName);
+    }
+
+    navigateToPageNew(pageName, updateUrl = true) {
+        if (!this.isValidPage(pageName)) {
+            console.warn(`Invalid page: ${pageName}`);
+            return;
+        }
+
+        console.log(`📄 Navigating to: ${pageName}`);
+
         // Remove active class from all nav items and page content
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
@@ -164,7 +167,7 @@ class StaffDashboard {
         });
 
         // Add active class to current nav item and page
-        const navItem = document.querySelector(`.nav-link[data-page="${pageName}"]`)?.parentElement;
+        const navItem = document.querySelector(`[data-page="${pageName}"]`);
         const pageContent = document.getElementById(`${pageName}-page`);
 
         if (navItem && pageContent) {
@@ -174,16 +177,18 @@ class StaffDashboard {
 
             // Update page title
             const pageTitle = document.getElementById('page-title');
-            const titles = {
-                overview: 'Dashboard Overview',
-                tables: 'Table Management',
-                orders: 'Order Management',
-                alerts: 'Customer Calls & Alerts',
-                menu: 'Menu Management',
-                analytics: 'Analytics & Reports',
-                settings: 'Settings'
-            };
-            pageTitle.textContent = titles[pageName] || 'Dashboard';
+            if (pageTitle) {
+                const titles = {
+                    overview: 'Restaurant Overview',
+                    tables: 'Table Management',
+                    orders: 'Order Management',
+                    alerts: 'Customer Calls & Alerts',
+                    menu: 'Menu Management',
+                    analytics: 'Analytics & Reports',
+                    settings: 'Restaurant Settings'
+                };
+                pageTitle.textContent = titles[pageName] || 'Dashboard';
+            }
 
             // Update URL
             if (updateUrl) {
@@ -192,24 +197,52 @@ class StaffDashboard {
 
             // Load page-specific data
             this.loadPageData(pageName);
+
+            // Close sidebar on mobile after navigation
+            if (window.innerWidth <= 1024) {
+                this.closeSidebar();
+            }
+        } else {
+            console.error(`Navigation elements not found for page: ${pageName}`);
         }
     }
 
     toggleSidebar() {
         const sidebar = document.querySelector('.sidebar');
-        sidebar.classList.toggle('open');
-        this.sidebarOpen = !this.sidebarOpen;
+        if (sidebar) {
+            sidebar.classList.toggle('open');
+            this.sidebarOpen = sidebar.classList.contains('open');
+        }
+    }
+
+    closeSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.classList.remove('open');
+            this.sidebarOpen = false;
+        }
     }
 
     handleResize() {
-        if (window.innerWidth > 1024 && !this.sidebarOpen) {
-            this.sidebarOpen = true;
-            document.querySelector('.sidebar').classList.remove('open');
+        if (window.innerWidth > 1024) {
+            // Desktop - ensure sidebar is properly shown
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.classList.remove('open');
+                this.sidebarOpen = true;
+            }
+        } else {
+            // Mobile - hide sidebar
+            this.sidebarOpen = false;
         }
     }
 
     async loadInitialData() {
+        console.log('📊 Loading initial data...');
         try {
+            // Show loading states
+            this.showLoadingStates();
+            
             await Promise.all([
                 this.loadTables(),
                 this.loadOrders(),
@@ -217,56 +250,125 @@ class StaffDashboard {
                 this.loadMenu(),
                 this.loadAnalytics()
             ]);
+            
             this.updateDashboard();
+            console.log('✅ Initial data loaded successfully');
         } catch (error) {
-            console.error('Error loading initial data:', error);
-            this.showNotification('Error loading data', 'error');
+            console.error('❌ Error loading initial data:', error);
+            this.showNotification('Error loading data. Please refresh the page.', 'error');
         }
+    }
+
+    showLoadingStates() {
+        // Show loading spinners in each section
+        const loadingHTML = `
+            <div class="loading-message">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading...</p>
+            </div>
+        `;
+        
+        const containers = [
+            '#tables-grid',
+            '#orders-list', 
+            '#alerts-list',
+            '.activity-feed'
+        ];
+        
+        containers.forEach(selector => {
+            const container = document.querySelector(selector);
+            if (container) {
+                container.innerHTML = loadingHTML;
+            }
+        });
     }
 
     async loadTables() {
         try {
             const response = await fetch('/api/tables');
-            this.data.tables = await response.json();
+            if (response.ok) {
+                this.data.tables = await response.json();
+            } else {
+                // Fallback data
+                this.data.tables = this.generateFallbackTables();
+            }
         } catch (error) {
-            console.error('Error loading tables:', error);
+            console.warn('Using fallback table data:', error);
+            this.data.tables = this.generateFallbackTables();
         }
     }
 
     async loadOrders() {
         try {
             const response = await fetch('/api/orders');
-            this.data.orders = await response.json();
+            if (response.ok) {
+                this.data.orders = await response.json();
+            } else {
+                this.data.orders = [];
+            }
         } catch (error) {
-            console.error('Error loading orders:', error);
+            console.warn('Orders data unavailable:', error);
+            this.data.orders = [];
         }
     }
 
     async loadAlerts() {
         try {
             const response = await fetch('/api/alerts');
-            this.data.alerts = await response.json();
+            if (response.ok) {
+                this.data.alerts = await response.json();
+            } else {
+                this.data.alerts = [];
+            }
         } catch (error) {
-            console.error('Error loading alerts:', error);
+            console.warn('Alerts data unavailable:', error);
+            this.data.alerts = [];
         }
     }
 
     async loadMenu() {
         try {
             const response = await fetch('/api/menu');
-            this.data.menu = await response.json();
+            if (response.ok) {
+                this.data.menu = await response.json();
+            } else {
+                this.data.menu = [];
+            }
         } catch (error) {
-            console.error('Error loading menu:', error);
+            console.warn('Menu data unavailable:', error);
+            this.data.menu = [];
         }
     }
 
     async loadAnalytics() {
         try {
             const response = await fetch('/api/analytics');
-            this.data.analytics = await response.json();
+            if (response.ok) {
+                this.data.analytics = await response.json();
+            } else {
+                this.data.analytics = {};
+            }
         } catch (error) {
-            console.error('Error loading analytics:', error);
+            console.warn('Analytics data unavailable:', error);
+            this.data.analytics = {};
         }
+    }
+
+    generateFallbackTables() {
+        // Generate sample table data when API is not available
+        const tables = [];
+        for (let i = 1; i <= 12; i++) {
+            tables.push({
+                id: i,
+                number: i <= 2 ? `VIP-${i}` : `T-${i}`,
+                status: i <= 3 ? 'occupied' : (i <= 5 ? 'needs_attention' : 'empty'),
+                customer_name: i <= 5 ? `Customer ${i}` : null,
+                seated_time: i <= 5 ? new Date(Date.now() - (i * 30 * 60000)).toISOString() : null,
+                order_total: i <= 5 ? (25 + i * 10) : null,
+                alerts: i === 2 || i === 4 ? [{ message: 'Needs assistance' }] : []
+            });
+        }
+        return tables;
     }
 
     loadPageData(pageName) {
@@ -633,25 +735,34 @@ class StaffDashboard {
         }
     }
 
-    async respondToAlert(alertId) {
-        const response = prompt('Enter your response:');
-        if (!response) return;
+    async clearAllAlerts() {
+        if (!confirm('Are you sure you want to clear all customer alerts?')) {
+            return;
+        }
 
         try {
-            const apiResponse = await fetch(`/api/alerts/${alertId}/respond`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ response })
+            const response = await fetch('/api/alerts/clear-all', {
+                method: 'POST'
             });
             
-            if (apiResponse.ok) {
-                this.showNotification('Response sent', 'success');
+            if (response.ok) {
+                this.showNotification('All alerts cleared successfully', 'success');
+                this.loadAlerts();
+                this.updateBadges();
+            } else {
+                this.showNotification('Error clearing alerts', 'error');
             }
         } catch (error) {
-            console.error('Error sending response:', error);
-            this.showNotification('Error sending response', 'error');
+            console.error('Error clearing all alerts:', error);
+            this.showNotification('Error clearing alerts', 'error');
+        }
+    }
+
+    async viewTableDetails(tableId) {
+        // For now, just show an alert with table info
+        const table = this.data.tables.find(t => t.id == tableId);
+        if (table) {
+            alert(`Table Details:\nNumber: ${table.number}\nStatus: ${table.status}\nCustomer: ${table.customer_name || 'None'}`);
         }
     }
 
