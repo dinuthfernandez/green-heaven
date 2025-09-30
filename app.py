@@ -202,7 +202,9 @@ def load_data(collection_name):
                 print(f"Warning: Unknown collection: {collection_name}")
                 return []
             
-            response = supabase.table(table_name).select("*").order('created_at', desc=True).execute()
+            # Use appropriate timestamp column for ordering
+            timestamp_col = 'updated_at' if collection_name == 'daily_totals' else 'created_at'
+            response = supabase.table(table_name).select("*").order(timestamp_col, desc=True).execute()
             data = response.data if response.data else []
             print(f"📊 Loaded {len(data)} items from Supabase {table_name}")
             return data
