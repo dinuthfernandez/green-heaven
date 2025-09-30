@@ -96,7 +96,13 @@ https://console.developers.google.com/apis/api/firestore.googleapis.com/overview
 
 ---
 
-## ⚡ Production URLs
+## ⚡ Production URLs - LIVE APPLICATION
+
+**🎉 Your Green Heaven Restaurant System is now LIVE at:**
+- **Customer Interface**: `https://green-heaven-ovd6.onrender.com/`
+- **Staff Dashboard**: `https://green-heaven-ovd6.onrender.com/staff`
+- **Menu Management**: `https://green-heaven-ovd6.onrender.com/menu-management`
+- **System Status**: `https://green-heaven-ovd6.onrender.com/system-status`
 
 After deployment, your restaurant system will be available at:
 - **Customer Interface**: `https://your-app-name.onrender.com/`
