@@ -282,14 +282,93 @@
                     <div class="page-header">
                         <h3>Menu Management</h3>
                         <div class="page-actions">
+                            <button class="btn-secondary" onclick="refreshMenu()">
+                                <i class="fas fa-sync-alt"></i>
+                                Refresh Menu
+                            </button>
                             <a href="/menu-management" class="btn-primary">
                                 <i class="fas fa-external-link-alt"></i>
                                 Full Menu Manager
                             </a>
                         </div>
                     </div>
-                    <div class="menu-preview">
-                        <p>Quick menu overview will be loaded here. Use the "Full Menu Manager" button to access complete menu management features.</p>
+                    <div class="menu-management-section">
+                        <div class="menu-filters">
+                            <button class="filter-btn active" data-category="all">All Items</button>
+                            <button class="filter-btn" data-category="Soups">Soups</button>
+                            <button class="filter-btn" data-category="Rice">Rice</button>
+                            <button class="filter-btn" data-category="Noodles">Noodles</button>
+                            <button class="filter-btn" data-category="Pasta">Pasta</button>
+                            <button class="filter-btn" data-category="Main Dishes">Main Dishes</button>
+                        </div>
+                        <div class="menu-items-grid" id="menu-items-grid">
+                            <!-- Menu items will be loaded dynamically -->
+                            <div class="loading-message">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Loading menu items...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Menu Item Modal -->
+                <div class="modal" id="edit-menu-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-edit"></i> Edit Menu Item</h3>
+                            <button class="modal-close" onclick="closeEditModal()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="edit-menu-form">
+                                <input type="hidden" id="edit-item-id">
+                                
+                                <div class="form-group">
+                                    <label for="edit-item-name">Item Name</label>
+                                    <input type="text" id="edit-item-name" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="edit-item-price">Price (LKR)</label>
+                                    <input type="number" id="edit-item-price" step="0.01" min="0" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="edit-item-description">Description</label>
+                                    <textarea id="edit-item-description" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="edit-item-category">Category</label>
+                                    <select id="edit-item-category" required>
+                                        <option value="Soups">Soups</option>
+                                        <option value="Starters">Starters</option>
+                                        <option value="Sandwiches">Sandwiches</option>
+                                        <option value="Salads">Salads</option>
+                                        <option value="Grilled Items">Grilled Items</option>
+                                        <option value="Rice">Rice</option>
+                                        <option value="Noodles">Noodles</option>
+                                        <option value="Pasta">Pasta</option>
+                                        <option value="Main Dishes">Main Dishes</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="edit-item-image">Image URL</label>
+                                    <input type="url" id="edit-item-image" placeholder="https://example.com/image.jpg">
+                                    <small>Paste a direct link to the food image</small>
+                                </div>
+                                
+                                <div class="image-preview-container">
+                                    <img id="edit-image-preview" style="display: none; max-width: 200px; border-radius: 8px; margin-top: 10px;">
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                            <button class="btn-primary" onclick="saveMenuItemChanges()">Save Changes</button>
+                        </div>
                     </div>
                 </div>
 
@@ -375,6 +454,11 @@
                 
                 socket.on('connect', function() {
                     console.log('✅ Socket.IO connected successfully');
+                    
+                    // Join staff room to receive real-time updates
+                    socket.emit('join_staff_room');
+                    console.log('🎯 Joined staff room for real-time updates');
+                    
                     if (window.dashboard) {
                         window.dashboard.handleSocketConnection(socket);
                     }
@@ -390,6 +474,20 @@
                 });
                 
                 // Real-time event handlers
+                socket.on('new_order', function(data) {
+                    console.log('🆕 New order received:', data);
+                    if (window.dashboard) {
+                        window.dashboard.handleNewOrder(data);
+                    }
+                });
+                
+                socket.on('new_alert', function(data) {
+                    console.log('🔔 New alert received:', data);
+                    if (window.dashboard) {
+                        window.dashboard.handleNewAlert(data);
+                    }
+                });
+                
                 socket.on('staff_alert', function(data) {
                     if (window.dashboard) {
                         window.dashboard.handleCustomerCall(data);

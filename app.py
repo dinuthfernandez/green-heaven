@@ -252,6 +252,32 @@ def load_data(collection_name):
             timestamp_col = 'updated_at' if collection_name == 'daily_totals' else 'created_at'
             response = supabase.table(table_name).select("*").order(timestamp_col, desc=True).execute()
             data = response.data if response.data else []
+            
+            # Transform data for local format compatibility if needed
+            if collection_name == 'orders' and data:
+                import json
+                for item in data:
+                    # Map 'total_amount' back to 'total' for local compatibility
+                    if 'total_amount' in item:
+                        item['total'] = item['total_amount']
+                    
+                    # Convert items JSON string back to list for local compatibility
+                    if 'items' in item and isinstance(item['items'], str):
+                        try:
+                            item['items'] = json.loads(item['items'])
+                        except (json.JSONDecodeError, TypeError):
+                            item['items'] = []
+                    
+                    # Add timestamp from created_at for compatibility
+                    if 'created_at' in item and 'timestamp' not in item:
+                        from datetime import datetime
+                        try:
+                            dt = datetime.fromisoformat(item['created_at'].replace('Z', '+00:00'))
+                            item['timestamp'] = dt.strftime('%H:%M:%S')
+                            item['date'] = dt.strftime('%Y-%m-%d')
+                        except:
+                            pass
+            
             print(f"📊 Loaded {len(data)} items from Supabase {table_name}")
             return data
             
@@ -467,16 +493,37 @@ def add_document(collection_name, document_data):
                 print(f"Warning: Unknown collection: {collection_name}")
                 return
             
-            # Ensure document has required fields
-            if 'id' not in document_data:
-                document_data['id'] = str(uuid.uuid4())
+            # Create a copy to avoid modifying the original data
+            supabase_data = document_data.copy()
             
-            if 'created_at' not in document_data:
-                document_data['created_at'] = datetime.now().isoformat()
+            # Transform data for Supabase schema if needed
+            if collection_name == 'orders':
+                # Map 'total' to 'total_amount' for Supabase
+                if 'total' in supabase_data:
+                    supabase_data['total_amount'] = supabase_data['total']
+                    del supabase_data['total']
+                
+                # Convert items list to JSON string for Supabase
+                if 'items' in supabase_data and isinstance(supabase_data['items'], list):
+                    import json
+                    supabase_data['items'] = json.dumps(supabase_data['items'])
+                
+                # Remove fields that don't exist in Supabase schema
+                fields_to_remove = ['date', 'timestamp']
+                for field in fields_to_remove:
+                    if field in supabase_data:
+                        del supabase_data[field]
+            
+            # Ensure document has required fields
+            if 'id' not in supabase_data:
+                supabase_data['id'] = str(uuid.uuid4())
+            
+            if 'created_at' not in supabase_data:
+                supabase_data['created_at'] = datetime.now().isoformat()
             
             # Insert into Supabase
-            response = supabase.table(table_name).insert(document_data).execute()
-            print(f"✅ Added document to Supabase {table_name}: {document_data.get('id', 'no-id')}")
+            response = supabase.table(table_name).insert(supabase_data).execute()
+            print(f"✅ Added document to Supabase {table_name}: {supabase_data.get('id', 'no-id')}")
             
             # Emit real-time update to all connected clients
             socketio.emit('database_updated', {
@@ -777,6 +824,9 @@ def customer_page():
     if not customer_name or not table_number:
         return redirect(url_for('customer_entry'))
     
+    # Load fresh menu items from Supabase each time
+    fresh_menu_items = load_menu_items()
+    
     # Pass Supabase config for real-time subscriptions
     supabase_url = os.getenv('SUPABASE_URL', '') if supabase else ''
     supabase_anon_key = os.getenv('SUPABASE_ANON_KEY', '') if supabase else ''
@@ -784,7 +834,7 @@ def customer_page():
     return render_template('customer_page.html', 
                          customer_name=customer_name, 
                          table_number=table_number,
-                         menu_items=menu_items,
+                         menu_items=fresh_menu_items,
                          supabase_url=supabase_url,
                          supabase_anon_key=supabase_anon_key)
 
@@ -1143,8 +1193,25 @@ def dismiss_alert():
 
 @app.route('/api/menu')
 def get_menu():
-    """Get all menu items"""
-    return jsonify(menu_items)
+    """Get all menu items with fresh data from Supabase"""
+    fresh_menu_items = load_menu_items()
+    return jsonify(fresh_menu_items)
+
+@app.route('/api/menu-item/<item_id>')
+def get_menu_item(item_id):
+    """Get a single menu item by ID"""
+    try:
+        # Load fresh menu items
+        fresh_menu_items = load_menu_items()
+        
+        # Find the specific item
+        for item in fresh_menu_items:
+            if item['id'] == item_id:
+                return jsonify({'status': 'success', 'item': item})
+        
+        return jsonify({'status': 'error', 'message': 'Item not found'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/orders')
 def get_orders():
@@ -1507,6 +1574,61 @@ def update_item_availability(item_id):
         
         return jsonify({'status': 'error', 'message': 'Item not found'}), 404
     except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/menu-item/<item_id>', methods=['PUT'])
+def update_menu_item(item_id):
+    """Update a menu item (name, price, image)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+        
+        # Find the item to update
+        item_found = False
+        for item in menu_items:
+            if item['id'] == item_id:
+                item_found = True
+                
+                # Update fields if provided
+                if 'name' in data:
+                    item['name'] = data['name'].strip()
+                if 'price' in data:
+                    try:
+                        item['price'] = float(data['price'])
+                    except (ValueError, TypeError):
+                        return jsonify({'status': 'error', 'message': 'Invalid price format'}), 400
+                if 'description' in data:
+                    item['description'] = data['description'].strip()
+                if 'category' in data:
+                    item['category'] = data['category'].strip()
+                if 'image_url' in data:
+                    item['image_url'] = data['image_url'].strip()
+                
+                # Update in Supabase
+                try:
+                    if supabase:
+                        supabase_item = item.copy()
+                        result = supabase.table('menu_items').update(supabase_item).eq('id', item_id).execute()
+                        print(f"✅ Updated menu item in Supabase: {item['name']}")
+                except Exception as e:
+                    print(f"⚠️ Failed to update in Supabase: {e}")
+                    # Continue with local update even if Supabase fails
+                
+                # Emit update via socket
+                socketio.emit('menu_item_updated', item)
+                
+                return jsonify({
+                    'status': 'success', 
+                    'message': 'Menu item updated successfully',
+                    'item': item
+                })
+        
+        if not item_found:
+            return jsonify({'status': 'error', 'message': 'Item not found'}), 404
+            
+    except Exception as e:
+        print(f"Error updating menu item: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/menu-item/<item_id>', methods=['DELETE'])

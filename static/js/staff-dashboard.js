@@ -701,19 +701,91 @@ class StaffDashboard {
     }
 
     renderMenu() {
-        const menuContainer = document.querySelector('.menu-preview');
+        const menuContainer = document.querySelector('#menu-items-grid');
         if (!menuContainer) return;
 
-        const menuHTML = this.data.menu.map(item => `
-            <div class="menu-item-card">
-                <h4>${item.name}</h4>
-                <p>${item.description}</p>
-                <p class="price">$${item.price.toFixed(2)}</p>
-                <p class="category">${item.category}</p>
+        // Filter menu items based on current filter
+        const currentFilter = document.querySelector('.filter-btn.active')?.dataset.category || 'all';
+        const filteredItems = currentFilter === 'all' 
+            ? this.data.menu 
+            : this.data.menu.filter(item => item.category === currentFilter);
+
+        if (filteredItems.length === 0) {
+            menuContainer.innerHTML = `
+                <div class="no-items-message" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                    <i class="fas fa-utensils" style="font-size: 3rem; color: #e5e7eb; margin-bottom: 1rem;"></i>
+                    <p style="color: #64748b;">No menu items found</p>
+                </div>
+            `;
+            return;
+        }
+
+        const menuHTML = filteredItems.map(item => `
+            <div class="menu-item-card" data-category="${item.category}">
+                <img src="${item.image_url || '/static/images/placeholder.svg'}" 
+                     alt="${item.name}" 
+                     class="menu-item-image"
+                     onerror="this.src='/static/images/placeholder.svg'">
+                
+                <div class="menu-item-content">
+                    <div class="menu-item-header">
+                        <div class="menu-item-name">${item.name}</div>
+                        <div class="menu-item-price">LKR ${item.price?.toFixed(2) || '0.00'}</div>
+                    </div>
+                    
+                    ${item.description ? `<div class="menu-item-description">${item.description}</div>` : ''}
+                    
+                    <div class="menu-item-meta">
+                        <div class="menu-item-category">${item.category || 'Uncategorized'}</div>
+                        <div class="menu-item-status status-${item.available !== false ? 'available' : 'unavailable'}">
+                            <span class="status-indicator"></span>
+                            ${item.available !== false ? 'Available' : 'Unavailable'}
+                        </div>
+                    </div>
+                    
+                    <div class="menu-item-actions">
+                        <button class="btn-edit" onclick="openEditModal('${item.id}')">
+                            <i class="fas fa-edit"></i>
+                            Edit
+                        </button>
+                        <button class="btn-toggle" onclick="toggleItemAvailability('${item.id}', ${item.available !== false})" 
+                                title="${item.available !== false ? 'Hide item' : 'Show item'}">
+                            <i class="fas fa-${item.available !== false ? 'eye-slash' : 'eye'}"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         `).join('');
 
         menuContainer.innerHTML = menuHTML;
+
+        // Set up filter button handlers
+        this.setupMenuFilters();
+    }
+
+    setupMenuFilters() {
+        const filterBtns = document.querySelectorAll('.menu-filters .filter-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all buttons
+                filterBtns.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                e.target.classList.add('active');
+                // Re-render menu with new filter
+                this.renderMenu();
+            });
+        });
+    }
+
+    async refreshMenu() {
+        try {
+            await this.loadMenu();
+            this.renderMenu();
+            this.showNotification('Menu refreshed successfully', 'success');
+        } catch (error) {
+            console.error('Error refreshing menu:', error);
+            this.showNotification('Failed to refresh menu', 'error');
+        }
     }
 
     renderAnalytics() {
@@ -880,6 +952,18 @@ class StaffDashboard {
         this.loadOrders();
         this.updateStats();
         this.showNotification(`New order from Table ${data.table_number}`, 'info');
+    }
+
+    handleNewAlert(data) {
+        console.log('New alert received:', data);
+        this.data.alerts.push(data);
+        this.updateBadges();
+        this.updateNotificationCount();
+        this.showNotification(`Customer call from Table ${data.table_number}`, 'warning');
+        
+        if (this.currentPage === 'alerts') {
+            this.renderAlerts();
+        }
     }
 
     handleOrderUpdate(data) {
@@ -1190,6 +1274,186 @@ class StaffDashboard {
         if (this.socket) {
             this.socket.disconnect();
         }
+    }
+}
+
+// Global Menu Management Functions
+async function openEditModal(itemId) {
+    try {
+        // Fetch the item details
+        const response = await fetch(`/api/menu-item/${itemId}`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const item = data.item;
+            
+            // Populate the form
+            document.getElementById('edit-item-id').value = item.id;
+            document.getElementById('edit-item-name').value = item.name || '';
+            document.getElementById('edit-item-price').value = item.price || '';
+            document.getElementById('edit-item-description').value = item.description || '';
+            document.getElementById('edit-item-category').value = item.category || '';
+            document.getElementById('edit-item-image').value = item.image_url || '';
+            
+            // Show image preview if available
+            const preview = document.getElementById('edit-image-preview');
+            if (item.image_url) {
+                preview.src = item.image_url;
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+            
+            // Show modal
+            document.getElementById('edit-menu-modal').classList.add('show');
+        } else {
+            showNotification('Failed to load item details', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading item:', error);
+        showNotification('Failed to load item details', 'error');
+    }
+}
+
+function closeEditModal() {
+    document.getElementById('edit-menu-modal').classList.remove('show');
+}
+
+async function saveMenuItemChanges() {
+    try {
+        const itemId = document.getElementById('edit-item-id').value;
+        const name = document.getElementById('edit-item-name').value.trim();
+        const price = parseFloat(document.getElementById('edit-item-price').value);
+        const description = document.getElementById('edit-item-description').value.trim();
+        const category = document.getElementById('edit-item-category').value;
+        const imageUrl = document.getElementById('edit-item-image').value.trim();
+        
+        // Validation
+        if (!name) {
+            showNotification('Item name is required', 'error');
+            return;
+        }
+        
+        if (!price || price <= 0) {
+            showNotification('Valid price is required', 'error');
+            return;
+        }
+        
+        if (!category) {
+            showNotification('Category is required', 'error');
+            return;
+        }
+        
+        // Prepare update data
+        const updateData = {
+            name: name,
+            price: price,
+            description: description,
+            category: category,
+            image_url: imageUrl
+        };
+        
+        // Send update request
+        const response = await fetch(`/api/menu-item/${itemId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showNotification('Menu item updated successfully!', 'success');
+            closeEditModal();
+            
+            // Refresh menu display
+            if (window.dashboard) {
+                await window.dashboard.loadMenu();
+                window.dashboard.renderMenu();
+            }
+        } else {
+            showNotification(data.message || 'Failed to update item', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating item:', error);
+        showNotification('Failed to update menu item', 'error');
+    }
+}
+
+async function toggleItemAvailability(itemId, currentAvailability) {
+    try {
+        const newAvailability = !currentAvailability;
+        
+        const response = await fetch(`/api/menu-item/${itemId}/availability`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ available: newAvailability })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showNotification(`Item ${newAvailability ? 'shown' : 'hidden'} successfully!`, 'success');
+            
+            // Refresh menu display
+            if (window.dashboard) {
+                await window.dashboard.loadMenu();
+                window.dashboard.renderMenu();
+            }
+        } else {
+            showNotification(data.message || 'Failed to update item', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating availability:', error);
+        showNotification('Failed to update item availability', 'error');
+    }
+}
+
+async function refreshMenu() {
+    if (window.dashboard) {
+        await window.dashboard.refreshMenu();
+    }
+}
+
+// Image preview functionality for edit modal
+document.addEventListener('DOMContentLoaded', () => {
+    const imageUrlInput = document.getElementById('edit-item-image');
+    const imagePreview = document.getElementById('edit-image-preview');
+    
+    if (imageUrlInput && imagePreview) {
+        imageUrlInput.addEventListener('input', (e) => {
+            const url = e.target.value.trim();
+            if (url) {
+                imagePreview.src = url;
+                imagePreview.style.display = 'block';
+                imagePreview.onerror = () => {
+                    imagePreview.style.display = 'none';
+                };
+            } else {
+                imagePreview.style.display = 'none';
+            }
+        });
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('edit-menu-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'edit-menu-modal') {
+            closeEditModal();
+        }
+    });
+});
+
+// Helper function for notifications (if not already available)
+function showNotification(message, type = 'info') {
+    if (window.dashboard && window.dashboard.showNotification) {
+        window.dashboard.showNotification(message, type);
+    } else {
+        // Fallback to console for testing
+        console.log(`${type.toUpperCase()}: ${message}`);
     }
 }
 
