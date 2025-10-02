@@ -1585,11 +1585,8 @@ def update_menu_item(item_id):
             return jsonify({'status': 'error', 'message': 'No data provided'}), 400
         
         # Find the item to update
-        item_found = False
         for item in menu_items:
             if item['id'] == item_id:
-                item_found = True
-                
                 # Update fields if provided
                 if 'name' in data:
                     item['name'] = data['name'].strip()
@@ -1624,8 +1621,8 @@ def update_menu_item(item_id):
                     'item': item
                 })
         
-        if not item_found:
-            return jsonify({'status': 'error', 'message': 'Item not found'}), 404
+        # If not found, always return a response
+        return jsonify({'status': 'error', 'message': 'Item not found'}), 404
             
     except Exception as e:
         print(f"Error updating menu item: {e}")
