@@ -4,6 +4,7 @@ class StaffDashboard {
     constructor() {
         this.socket = null;
         this.currentPage = 'overview';
+        this.currentOrderFilter = 'all'; // Track current order filter
         this.sidebarOpen = window.innerWidth > 1024;
         this.refreshInterval = null;
         this.lastActivity = Date.now();
@@ -607,11 +608,26 @@ class StaffDashboard {
         const ordersContainer = document.querySelector('.orders-list');
         if (!ordersContainer) return;
 
-        const ordersHTML = this.data.orders.map(order => `
+        // Filter orders based on current filter
+        const filteredOrders = this.currentOrderFilter === 'all' 
+            ? this.data.orders 
+            : this.data.orders.filter(order => order.status === this.currentOrderFilter);
+
+        if (filteredOrders.length === 0) {
+            ordersContainer.innerHTML = `
+                <div class="no-orders-message" style="text-align: center; padding: 2rem; color: #64748b;">
+                    <i class="fas fa-receipt" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>No ${this.currentOrderFilter === 'all' ? '' : this.currentOrderFilter + ' '}orders found</p>
+                </div>
+            `;
+            return;
+        }
+
+        const ordersHTML = filteredOrders.map(order => `
             <div class="order-card">
                 <div class="order-header">
                     <div class="order-info">
-                        <span class="order-id">#${order.id}</span>
+                        <span class="order-id">#${order.id.substring(0, 8)}</span>
                         <span class="table-number">Table ${order.table_number}</span>
                         <span class="customer-name">${order.customer_name}</span>
                     </div>
@@ -628,13 +644,13 @@ class StaffDashboard {
                                 <span class="item-name">${item.name}</span>
                                 <span class="item-quantity">x${item.quantity}</span>
                             </div>
-                            <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
+                            <span class="item-price">LKR ${(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                     `).join('')}
                 </div>
                 
                 <div class="order-actions">
-                    <span class="order-total">Total: $${order.total.toFixed(2)}</span>
+                    <span class="order-total">Total: LKR ${order.total.toFixed(2)}</span>
                     <div>
                         ${order.status === 'pending' ? `
                             <button class="btn-small btn-info btn-mark-preparing" data-order-id="${order.id}">
@@ -657,6 +673,9 @@ class StaffDashboard {
         `).join('');
 
         ordersContainer.innerHTML = ordersHTML;
+
+        // Update filter button states
+        this.updateOrderFilterButtons();
     }
 
     renderAlerts() {
@@ -827,7 +846,10 @@ class StaffDashboard {
             
             if (response.ok) {
                 this.showNotification(`Order marked as ${status}`, 'success');
-                this.loadOrders();
+                await this.loadOrders();
+                if (this.currentPage === 'orders') {
+                    this.renderOrders();
+                }
             }
         } catch (error) {
             console.error('Error updating order status:', error);
@@ -920,22 +942,22 @@ class StaffDashboard {
         // Add active class to clicked button
         filterBtn.classList.add('active');
         
-        // Apply filter logic based on button data
+        // Store current filter and re-render orders
         const filter = filterBtn.dataset.filter;
-        this.applyOrderFilter(filter);
+        this.currentOrderFilter = filter;
+        
+        // Re-render orders with new filter
+        if (this.currentPage === 'orders') {
+            this.renderOrders();
+        }
     }
 
-    applyOrderFilter(filter) {
-        const orderCards = document.querySelectorAll('.order-card');
-        
-        orderCards.forEach(card => {
-            const statusBadge = card.querySelector('.status-badge');
-            const status = statusBadge ? statusBadge.textContent.toLowerCase() : '';
-            
-            if (filter === 'all' || status === filter) {
-                card.style.display = 'block';
-            } else {
-                card.style.display = 'none';
+    updateOrderFilterButtons() {
+        // Update filter button states to match current filter
+        document.querySelectorAll('.filter-buttons .filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.filter === this.currentOrderFilter) {
+                btn.classList.add('active');
             }
         });
     }
@@ -949,7 +971,11 @@ class StaffDashboard {
 
     handleNewOrder(data) {
         console.log('New order received:', data);
-        this.loadOrders();
+        this.loadOrders().then(() => {
+            if (this.currentPage === 'orders') {
+                this.renderOrders();
+            }
+        });
         this.updateStats();
         this.showNotification(`New order from Table ${data.table_number}`, 'info');
     }
@@ -968,7 +994,11 @@ class StaffDashboard {
 
     handleOrderUpdate(data) {
         console.log('Order update received:', data);
-        this.loadOrders();
+        this.loadOrders().then(() => {
+            if (this.currentPage === 'orders') {
+                this.renderOrders();
+            }
+        });
         this.updateStats();
     }
 
