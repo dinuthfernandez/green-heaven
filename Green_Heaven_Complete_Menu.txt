@@ -1,0 +1,170 @@
+GREEN HEAVEN RESTAURANT - COMPLETE MENU
+========================================
+Generated: October 1, 2025
+Total Items: 109
+
+STARTERS (6 items)
+------------------
+1. French Fries                     LKR 1,900.00
+2. Garlic Bread                     LKR   850.00
+3. Fish and Chips                   LKR 2,100.00
+4. Tuna Cutlets                     LKR   500.00
+5. Butter Prawns                    LKR 1,800.00
+6. Onion Butter                     LKR 1,200.00
+
+SOUP (5 items)
+--------------
+7. Cream Corn and Egg Drop          LKR   900.00
+8. Cream of Chicken                 LKR 1,100.00
+9. Tom Yum                          LKR 1,100.00
+10. Cream of Vegetable              LKR   900.00
+11. Chicken Broth                   LKR 1,100.00
+
+SANDWICHES (6 items)
+--------------------
+12. Chicken Sandwich                LKR 1,200.00
+13. Egg Sandwich                    LKR 1,000.00
+14. Chicken Bacon Cheese Sandwich   LKR 1,300.00
+15. Tuna Sandwich                   LKR 1,200.00
+16. Vegetable Sandwich              LKR   800.00
+17. Special Club Sandwich - Green Heaven  LKR 2,100.00
+
+SALADS (5 items)
+----------------
+18. Green Salad                     LKR   800.00
+19. Chicken and Mango Salad         LKR 1,400.00
+20. Tuna Salad                      LKR 1,200.00
+21. Vegetable Mixed Salad           LKR 1,000.00
+22. Hawaiian Chicken Salad - Green Heaven  LKR 1,800.00
+
+GRILL RECIPES (7 items)
+------------------------
+23. Grilled Chicken Breast         LKR 1,800.00
+24. Grilled Dan Seared Fish - Kebab Chips  LKR 2,400.00
+25. Mix Grill Platter               LKR 8,000.00
+26. Grilled Seafood Platter         LKR 7,500.00
+27. Grilled Pork Chops - with Salad, Mash Potato  LKR 4,500.00
+28. Beef Steak                      LKR 4,800.00
+29. Grilled Mullet                  LKR 1,000.00
+
+SIDE DISHES (3 items)
+---------------------
+30. Hot Butter Mushroom             LKR 1,400.00
+31. Hot Butter Prawns               LKR 2,500.00
+32. Hot Butter Cuttlefish           LKR 2,500.00
+
+RICE (24 items)
+---------------
+33. Vegetable Fried Rice (Full)     LKR 1,800.00
+34. Vegetable Fried Rice (Half)     LKR 1,500.00
+35. Egg Fried Rice (Full)           LKR 1,950.00
+36. Egg Fried Rice (Half)           LKR 1,600.00
+37. Shrimp and Chicken Fried Rice (Full)  LKR 2,300.00
+38. Shrimp and Chicken Fried Rice (Half)  LKR 1,800.00
+39. Chicken Fried Rice (Full)       LKR 2,200.00
+40. Chicken Fried Rice (Half)       LKR 1,800.00
+41. Seafood Fried Rice (Full)       LKR 2,400.00
+42. Seafood Fried Rice (Half)       LKR 2,000.00
+43. Mix Fried Rice (Full)           LKR 2,400.00
+44. Mix Fried Rice (Half)           LKR 2,000.00
+45. Pork Curry and Rice             LKR 2,500.00
+46. Beef Fried Rice (Full)          LKR 2,500.00
+47. Beef Fried Rice (Half)          LKR 2,100.00
+48. Chicken Biriyani (Full)         LKR 2,200.00
+49. Chicken Biriyani (Half)         LKR 1,800.00
+50. Nasi Goreng (Full)              LKR 2,600.00
+51. Nasi Goreng (Half)              LKR 2,400.00
+52. Mongolian Fried Rice (Full)     LKR 3,000.00
+53. Mongolian Fried Rice (Half)     LKR 2,600.00
+54. Chicken Chopsuey Rice           LKR 2,900.00
+55. Mix Chopsuey Rice               LKR 3,200.00
+56. Seafood Chopsuey Rice           LKR 3,200.00
+
+NOODLES (16 items)
+------------------
+57. Vegetable Noodles (Full)        LKR 1,800.00
+58. Vegetable Noodles (Half)        LKR 1,500.00
+59. Egg Noodles (Full)              LKR 1,950.00
+60. Egg Noodles (Half)              LKR 1,600.00
+61. Shrimp and Chicken Noodles (Full)  LKR 2,300.00
+62. Shrimp and Chicken Noodles (Half)  LKR 1,800.00
+63. Chicken Noodles (Full)          LKR 2,200.00
+64. Chicken Noodles (Half)          LKR 1,900.00
+65. Beef Noodles (Full)             LKR 2,500.00
+66. Beef Noodles (Half)             LKR 2,100.00
+67. Mix Noodles (Full)              LKR 2,400.00
+68. Mix Noodles (Half)              LKR 2,000.00
+69. Seafood Noodles (Full)          LKR 2,400.00
+70. Seafood Noodles (Half)          LKR 2,000.00
+71. Pork Noodles (Full)             LKR 2,400.00
+72. Pork Noodles (Half)             LKR 2,000.00
+
+PASTA (16 items)
+----------------
+73. Spaghetti Marinara (Full)       LKR 2,700.00
+74. Spaghetti Marinara (Half)       LKR 2,200.00
+75. Spaghetti Bolognese (Full)      LKR 2,800.00
+76. Spaghetti Bolognese (Half)      LKR 2,480.00
+77. Spaghetti Carbonara (Full)      LKR 2,700.00
+78. Spaghetti Carbonara (Half)      LKR 2,200.00
+79. Shrimp Pasta with Tomato Sauce (Full)  LKR 2,700.00
+80. Shrimp Pasta with Tomato Sauce (Half)  LKR 2,200.00
+81. Shrimp Pasta with Cream Sauce (Full)   LKR 2,800.00
+82. Shrimp Pasta with Cream Sauce (Half)   LKR 2,500.00
+83. Vegetable Pasta with Cream Sauce (Full)  LKR 2,000.00
+84. Vegetable Pasta with Cream Sauce (Half)  LKR 1,600.00
+85. Chicken Pasta with Cream Sauce (Full)   LKR 2,500.00
+86. Chicken Pasta with Cream Sauce (Half)   LKR 2,200.00
+87. Chicken and Mushroom Pasta with Cream Sauce (Full)  LKR 2,800.00
+88. Chicken and Mushroom Pasta with Cream Sauce (Half)  LKR 2,400.00
+
+MAIN DISHES (21 items)
+-----------------------
+89. Black Pepper Chicken            LKR 2,900.00
+90. Devilled Chicken                LKR 1,300.00
+91. Sweet and Sour Chicken          LKR 2,300.00
+92. Beef Devilled                   LKR 2,500.00
+93. Beef Fried                      LKR 2,500.00
+94. Beef Black Pepper               LKR 2,600.00
+95. Beef Stew                       LKR 2,500.00
+96. Pork Fried                      LKR 2,400.00
+97. Pork Devilled                   LKR 2,500.00
+98. Black Pork Curry                LKR 2,600.00
+99. Pork Stew                       LKR 2,500.00
+100. Fish Devilled                  LKR 2,700.00
+101. Fish Stew                      LKR 2,600.00
+102. Fried Fish                     LKR 2,600.00
+103. Black Pepper Fish              LKR 2,700.00
+104. Sweet and Sour Fish            LKR 2,800.00
+105. Fried Prawns                   LKR 2,800.00
+106. Devilled Prawns                LKR 2,800.00
+107. Black Pepper Prawns            LKR 2,800.00
+108. Hot Garlic Prawns              LKR 2,800.00
+109. Sweet and Sour Prawns          LKR 2,800.00
+
+========================================
+SUMMARY
+========================================
+Total Menu Items: 109
+Price Range: LKR 500.00 - LKR 8,000.00
+Average Price: LKR 2,238.81
+Total Menu Value: LKR 244,030.00
+
+Most Expensive: Mix Grill Platter (LKR 8,000.00)
+Least Expensive: Tuna Cutlets (LKR 500.00)
+
+Categories:
+- Starters: 6 items
+- Soup: 5 items  
+- Sandwiches: 6 items
+- Salads: 5 items
+- Grill Recipes: 7 items
+- Side Dishes: 3 items
+- Rice: 24 items
+- Noodles: 16 items
+- Pasta: 16 items
+- Main Dishes: 21 items
+
+Green Heaven Restaurant
+Complete Menu - All 109 Items
+========================================

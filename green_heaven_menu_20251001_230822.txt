@@ -1,0 +1,390 @@
+================================================================================
+GREEN HEAVEN RESTAURANT - COMPLETE MENU
+================================================================================
+Generated on: 2025-10-01 23:08:22
+Total Items: 109
+================================================================================
+
+📂 GRILL RECIPES
+------------------------------------------------------------
+✅ Beef Steak                                            LKR 4,800.00
+    Description: Beef Steak - LKR 4800
+
+✅ Grilled Chicken Breast                                LKR 1,800.00
+    Description: Grilled Chicken Breast - LKR 1800
+
+✅ Grilled Dan Seared Fish - Kebab Chips                 LKR 2,400.00
+    Description: Grilled Dan Seared Fish - Kebab Chips - LKR 2400
+
+✅ Grilled Mullet                                        LKR 1,000.00
+    Description: Grilled Mullet - LKR 1000
+
+✅ Grilled Pork Chops - with Salad, Mash Potato          LKR 4,500.00
+    Description: Grilled Pork Chops - with Salad, Mash Potato - LKR 4500
+
+✅ Grilled Seafood Platter                               LKR 7,500.00
+    Description: Grilled Seafood Platter - LKR 7500
+
+✅ Mix Grill Platter                                     LKR 8,000.00
+    Description: Mix Grill Platter - LKR 8000
+
+
+📂 MAIN DISHES
+------------------------------------------------------------
+✅ Beef Black Pepper                                     LKR 2,600.00
+    Description: Beef Black Pepper - LKR 2600
+
+✅ Beef Devilled                                         LKR 2,500.00
+    Description: Beef Devilled - LKR 2500
+
+✅ Beef Fried                                            LKR 2,500.00
+    Description: Beef Fried - LKR 2500
+
+✅ Beef Stew                                             LKR 2,500.00
+    Description: Beef Stew - LKR 2500
+
+✅ Black Pepper Chicken                                  LKR 2,900.00
+    Description: Black Pepper Chicken - LKR 2900
+
+✅ Black Pepper Fish                                     LKR 2,700.00
+    Description: Black Pepper Fish - LKR 2700
+
+✅ Black Pepper Prawns                                   LKR 2,800.00
+    Description: Black Pepper Prawns - LKR 2800
+
+✅ Black Pork Curry                                      LKR 2,600.00
+    Description: Black Pork Curry - LKR 2600
+
+✅ Devilled Chicken                                      LKR 1,300.00
+    Description: Devilled Chicken - LKR 1300
+
+✅ Devilled Prawns                                       LKR 2,800.00
+    Description: Devilled Prawns - LKR 2800
+
+✅ Fish Devilled                                         LKR 2,700.00
+    Description: Fish Devilled - LKR 2700
+
+✅ Fish Stew                                             LKR 2,600.00
+    Description: Fish Stew - LKR 2600
+
+✅ Fried Fish                                            LKR 2,600.00
+    Description: Fried Fish - LKR 2600
+
+✅ Fried Prawns                                          LKR 2,800.00
+    Description: Fried Prawns - LKR 2800
+
+✅ Hot Garlic Prawns                                     LKR 2,800.00
+    Description: Hot Garlic Prawns - LKR 2800
+
+✅ Pork Devilled                                         LKR 2,500.00
+    Description: Pork Devilled - LKR 2500
+
+✅ Pork Fried                                            LKR 2,400.00
+    Description: Pork Fried - LKR 2400
+
+✅ Pork Stew                                             LKR 2,500.00
+    Description: Pork Stew - LKR 2500
+
+✅ Sweet and Sour Chicken                                LKR 2,300.00
+    Description: Sweet and Sour Chicken - LKR 2300
+
+✅ Sweet and Sour Fish                                   LKR 2,800.00
+    Description: Sweet and Sour Fish - LKR 2800
+
+✅ Sweet and Sour Prawns                                 LKR 2,800.00
+    Description: Sweet and Sour Prawns - LKR 2800
+
+
+📂 NOODLES
+------------------------------------------------------------
+✅ Beef Noodles (Full)                                   LKR 2,500.00
+    Description: Beef Noodles (Full) - LKR 2500
+
+✅ Beef Noodles (Half)                                   LKR 2,100.00
+    Description: Beef Noodles (Half) - LKR 2100
+
+✅ Chicken Noodles (Full)                                LKR 2,200.00
+    Description: Chicken Noodles (Full) - LKR 2200
+
+✅ Chicken Noodles (Half)                                LKR 1,900.00
+    Description: Chicken Noodles (Half) - LKR 1900
+
+✅ Egg Noodles (Full)                                    LKR 1,950.00
+    Description: Egg Noodles (Full) - LKR 1950
+
+✅ Egg Noodles (Half)                                    LKR 1,600.00
+    Description: Egg Noodles (Half) - LKR 1600
+
+✅ Mix Noodles (Full)                                    LKR 2,400.00
+    Description: Mix Noodles (Full) - LKR 2400
+
+✅ Mix Noodles (Half)                                    LKR 2,000.00
+    Description: Mix Noodles (Half) - LKR 2000
+
+✅ Pork Noodles (Full)                                   LKR 2,400.00
+    Description: Pork Noodles (Full) - LKR 2400
+
+✅ Pork Noodles (Half)                                   LKR 2,000.00
+    Description: Pork Noodles (Half) - LKR 2000
+
+✅ Seafood Noodles (Full)                                LKR 2,400.00
+    Description: Seafood Noodles (Full) - LKR 2400
+
+✅ Seafood Noodles (Half)                                LKR 2,000.00
+    Description: Seafood Noodles (Half) - LKR 2000
+
+✅ Shrimp and Chicken Noodles (Full)                     LKR 2,300.00
+    Description: Shrimp and Chicken Noodles (Full) - LKR 2300
+
+✅ Shrimp and Chicken Noodles (Half)                     LKR 1,800.00
+    Description: Shrimp and Chicken Noodles (Half) - LKR 1800
+
+✅ Vegetable Noodles (Full)                              LKR 1,800.00
+    Description: Vegetable Noodles (Full) - LKR 1800
+
+✅ Vegetable Noodles (Half)                              LKR 1,500.00
+    Description: Vegetable Noodles (Half) - LKR 1500
+
+
+📂 PASTA
+------------------------------------------------------------
+✅ Chicken and Mushroom Pasta with Cream Sauce (Full)    LKR 2,800.00
+    Description: Chicken and Mushroom Pasta with Cream Sauce (Full) - LKR 2800
+
+✅ Chicken and Mushroom Pasta with Cream Sauce (Half)    LKR 2,400.00
+    Description: Chicken and Mushroom Pasta with Cream Sauce (Half) - LKR 2400
+
+✅ Chicken Pasta with Cream Sauce (Full)                 LKR 2,500.00
+    Description: Chicken Pasta with Cream Sauce (Full) - LKR 2500
+
+✅ Chicken Pasta with Cream Sauce (Half)                 LKR 2,200.00
+    Description: Chicken Pasta with Cream Sauce (Half) - LKR 2200
+
+✅ Shrimp Pasta with Cream Sauce (Full)                  LKR 2,800.00
+    Description: Shrimp Pasta with Cream Sauce (Full) - LKR 2800
+
+✅ Shrimp Pasta with Cream Sauce (Half)                  LKR 2,500.00
+    Description: Shrimp Pasta with Cream Sauce (Half) - LKR 2500
+
+✅ Shrimp Pasta with Tomato Sauce (Full)                 LKR 2,700.00
+    Description: Shrimp Pasta with Tomato Sauce (Full) - LKR 2700
+
+✅ Shrimp Pasta with Tomato Sauce (Half)                 LKR 2,200.00
+    Description: Shrimp Pasta with Tomato Sauce (Half) - LKR 2200
+
+✅ Spaghetti Bolognese (Full)                            LKR 2,800.00
+    Description: Spaghetti Bolognese (Full) - LKR 2800
+
+✅ Spaghetti Bolognese (Half)                            LKR 2,480.00
+    Description: Spaghetti Bolognese (Half) - LKR 2480
+
+✅ Spaghetti Carbonara (Full)                            LKR 2,700.00
+    Description: Spaghetti Carbonara (Full) - LKR 2700
+
+✅ Spaghetti Carbonara (Half)                            LKR 2,200.00
+    Description: Spaghetti Carbonara (Half) - LKR 2200
+
+✅ Spaghetti Marinara (Full)                             LKR 2,700.00
+    Description: Spaghetti Marinara (Full) - LKR 2700
+
+✅ Spaghetti Marinara (Half)                             LKR 2,200.00
+    Description: Spaghetti Marinara (Half) - LKR 2200
+
+✅ Vegetable Pasta with Cream Sauce (Full)               LKR 2,000.00
+    Description: Vegetable Pasta with Cream Sauce (Full) - LKR 2000
+
+✅ Vegetable Pasta with Cream Sauce (Half)               LKR 1,600.00
+    Description: Vegetable Pasta with Cream Sauce (Half) - LKR 1600
+
+
+📂 RICE
+------------------------------------------------------------
+✅ Beef Fried Rice (Full)                                LKR 2,500.00
+    Description: Beef Fried Rice (Full) - LKR 2500
+
+✅ Beef Fried Rice (Half)                                LKR 2,100.00
+    Description: Beef Fried Rice (Half) - LKR 2100
+
+✅ Chicken Biriyani (Full)                               LKR 2,200.00
+    Description: Chicken Biriyani (Full) - LKR 2200
+
+✅ Chicken Biriyani (Half)                               LKR 1,800.00
+    Description: Chicken Biriyani (Half) - LKR 1800
+
+✅ Chicken Chopsuey Rice                                 LKR 2,900.00
+    Description: Chicken Chopsuey Rice - LKR 2900
+
+✅ Chicken Fried Rice (Full)                             LKR 2,200.00
+    Description: Chicken Fried Rice (Full) - LKR 2200
+
+✅ Chicken Fried Rice (Half)                             LKR 1,800.00
+    Description: Chicken Fried Rice (Half) - LKR 1800
+
+✅ Egg Fried Rice (Full)                                 LKR 1,950.00
+    Description: Egg Fried Rice (Full) - LKR 1950
+
+✅ Egg Fried Rice (Half)                                 LKR 1,600.00
+    Description: Egg Fried Rice (Half) - LKR 1600
+
+✅ Mix Chopsuey Rice                                     LKR 3,200.00
+    Description: Mix Chopsuey Rice - LKR 3200
+
+✅ Mix Fried Rice (Full)                                 LKR 2,400.00
+    Description: Mix Fried Rice (Full) - LKR 2400
+
+✅ Mix Fried Rice (Half)                                 LKR 2,000.00
+    Description: Mix Fried Rice (Half) - LKR 2000
+
+✅ Mongolian Fried Rice (Full)                           LKR 3,000.00
+    Description: Mongolian Fried Rice (Full) - LKR 3000
+
+✅ Mongolian Fried Rice (Half)                           LKR 2,600.00
+    Description: Mongolian Fried Rice (Half) - LKR 2600
+
+✅ Nasi Goreng (Full)                                    LKR 2,600.00
+    Description: Nasi Goreng (Full) - LKR 2600
+
+✅ Nasi Goreng (Half)                                    LKR 2,400.00
+    Description: Nasi Goreng (Half) - LKR 2400
+
+✅ Pork Curry and Rice                                   LKR 2,500.00
+    Description: Pork Curry and Rice - LKR 2500
+
+✅ Seafood Chopsuey Rice                                 LKR 3,200.00
+    Description: Seafood Chopsuey Rice - LKR 3200
+
+✅ Seafood Fried Rice (Full)                             LKR 2,400.00
+    Description: Seafood Fried Rice (Full) - LKR 2400
+
+✅ Seafood Fried Rice (Half)                             LKR 2,000.00
+    Description: Seafood Fried Rice (Half) - LKR 2000
+
+✅ Shrimp and Chicken Fried Rice (Full)                  LKR 2,300.00
+    Description: Shrimp and Chicken Fried Rice (Full) - LKR 2300
+
+✅ Shrimp and Chicken Fried Rice (Half)                  LKR 1,800.00
+    Description: Shrimp and Chicken Fried Rice (Half) - LKR 1800
+
+✅ Vegetable Fried Rice (Full)                           LKR 1,800.00
+    Description: Vegetable Fried Rice (Full) - LKR 1800
+
+✅ Vegetable Fried Rice (Half)                           LKR 1,500.00
+    Description: Vegetable Fried Rice (Half) - LKR 1500
+
+
+📂 SALADS
+------------------------------------------------------------
+✅ Chicken and Mango Salad                               LKR 1,400.00
+    Description: Chicken and Mango Salad - LKR 1400
+
+✅ Green Salad                                             LKR 800.00
+    Description: Green Salad - LKR 800
+
+✅ Hawaiin Chicken Salad - Green Heaven                  LKR 1,800.00
+    Description: Hawaiin Chicken Salad - Green Heaven - LKR 1800
+
+✅ Tuna Salad                                            LKR 1,200.00
+    Description: Tuna Salad - LKR 1200
+
+✅ Vegetable Mixed Salad                                 LKR 1,000.00
+    Description: Vegetable Mixed Salad - LKR 1000
+
+
+📂 SANDWICHES
+------------------------------------------------------------
+✅ Chicken Bacon Cheese Sandwich                         LKR 1,300.00
+    Description: Chicken Bacon Cheese Sandwich - LKR 1300
+
+✅ Chicken Sandwich                                      LKR 1,200.00
+    Description: Chicken Sandwich - LKR 1200
+
+✅ Egg Sandwich                                          LKR 1,000.00
+    Description: Egg Sandwich - LKR 1000
+
+✅ Special Club Sandwich - Green Heaven                  LKR 2,100.00
+    Description: Special Club Sandwich - Green Heaven - LKR 2100
+
+✅ Tuna Sandwich                                         LKR 1,200.00
+    Description: Tuna Sandwich - LKR 1200
+
+✅ Vegetable Sandwich                                      LKR 800.00
+    Description: Vegetable Sandwich - LKR 800
+
+
+📂 SIDE DISHES
+------------------------------------------------------------
+✅ Hot Butter Cuttlefish                                 LKR 2,500.00
+    Description: Hot Butter Cuttlefish - LKR 2500
+
+✅ Hot Butter Mushroom                                   LKR 1,400.00
+    Description: Hot Butter Mushroom - LKR 1400
+
+✅ Hot Butter Prawns                                     LKR 2,500.00
+    Description: Hot Butter Prawns - LKR 2500
+
+
+📂 SOUP
+------------------------------------------------------------
+✅ Chicken Broth                                         LKR 1,100.00
+    Description: Chicken Broth - LKR 1100
+
+✅ Cream Corn and Egg Drop                                 LKR 900.00
+    Description: Cream Corn and Egg Drop - LKR 900
+
+✅ Cream of Chicken                                      LKR 1,100.00
+    Description: Cream of Chicken - LKR 1100
+
+✅ Cream of Vegetable                                      LKR 900.00
+    Description: Cream of Vegetable - LKR 900
+
+✅ Tom Yum                                               LKR 1,100.00
+    Description: Tom Yum - LKR 1100
+
+
+📂 STARTERS
+------------------------------------------------------------
+✅ Butter Prawns                                         LKR 1,800.00
+    Description: Butter Prawns - LKR 1800
+
+✅ Fish and Chips                                        LKR 2,100.00
+    Description: Fish and Chips - LKR 2100
+
+✅ French Fries                                          LKR 1,900.00
+    Description: French Fries - LKR 1900
+
+✅ Garlic Bread                                            LKR 850.00
+    Description: Garlic Bread - LKR 850
+
+✅ Onion Butter                                          LKR 1,200.00
+    Description: Onion Butter - LKR 1200
+
+✅ Tuna Cutlets                                            LKR 500.00
+    Description: Tuna Cutlets - LKR 500
+
+
+================================================================================
+SUMMARY BY CATEGORY
+================================================================================
+Grill Recipes                  | Items:   7 | Total: LKR  30,000.00 | Avg: LKR 4,285.71
+Main Dishes                    | Items:  21 | Total: LKR  54,000.00 | Avg: LKR 2,571.43
+Noodles                        | Items:  16 | Total: LKR  32,850.00 | Avg: LKR 2,053.12
+Pasta                          | Items:  16 | Total: LKR  38,780.00 | Avg: LKR 2,423.75
+Rice                           | Items:  24 | Total: LKR  54,750.00 | Avg: LKR 2,281.25
+Salads                         | Items:   5 | Total: LKR   6,200.00 | Avg: LKR 1,240.00
+Sandwiches                     | Items:   6 | Total: LKR   7,600.00 | Avg: LKR 1,266.67
+Side Dishes                    | Items:   3 | Total: LKR   6,400.00 | Avg: LKR 2,133.33
+Soup                           | Items:   5 | Total: LKR   5,100.00 | Avg: LKR 1,020.00
+Starters                       | Items:   6 | Total: LKR   8,350.00 | Avg: LKR 1,391.67
+--------------------------------------------------------------------------------
+TOTAL                          | Items: 109 | Total: LKR 244,030.00 | Avg: LKR 2,238.81
+================================================================================
+
+PRICE RANGES
+----------------------------------------
+Lowest Price:  LKR 500.00
+Highest Price: LKR 8,000.00
+Price Range:   LKR 7,500.00
+
+================================================================================
+End of Menu
+================================================================================

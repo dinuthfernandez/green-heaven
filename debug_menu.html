@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Menu Debug Test</title>
+</head>
+<body>
+    <h1>Menu Debug Test</h1>
+    <div id="debug-output"></div>
+    <div id="menu-items"></div>
+    <div id="test-buttons">
+        <button onclick="testUpdateQuantity()">Test updateQuantity Function</button>
+        <button onclick="testCallStaff()">Test Call Staff</button>
+    </div>
+
+    <script>
+        // Fetch menu data and test functionality
+        fetch('/api/menu')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Menu API Response:', data);
+                document.getElementById('debug-output').innerHTML = `
+                    <h3>Menu API Test Results:</h3>
+                    <p>✅ Menu items loaded: ${data.length}</p>
+                    <p>First item: ${JSON.stringify(data[0], null, 2)}</p>
+                `;
+                
+                // Create test menu items
+                if (data.length > 0) {
+                    const menuContainer = document.getElementById('menu-items');
+                    const firstItem = data[0];
+                    menuContainer.innerHTML = `
+                        <h3>Test Menu Item:</h3>
+                        <div class="menu-item" data-category="${firstItem.category}" data-item-id="${firstItem.id}">
+                            <h4 class="item-name">${firstItem.name}</h4>
+                            <p class="item-description">${firstItem.description}</p>
+                            <span class="item-price">LKR ${firstItem.price.toFixed(2)}</span>
+                            <div class="quantity-controls">
+                                <button onclick="updateQuantity('${firstItem.id}', -1)">-</button>
+                                <span class="quantity" id="qty-${firstItem.id}">0</span>
+                                <button onclick="updateQuantity('${firstItem.id}', 1)">+</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Set global menu data
+                    window.menuItemsData = data;
+                    console.log('✅ Global menu data set:', window.menuItemsData.length, 'items');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Menu API Error:', error);
+                document.getElementById('debug-output').innerHTML = `
+                    <h3>❌ Menu API Error:</h3>
+                    <p>${error.message}</p>
+                `;
+            });
+
+        // Test functions
+        let cart = {};
+
+        function updateQuantity(itemId, change) {
+            console.log('🔄 updateQuantity called:', itemId, change);
+            
+            const quantityEl = document.getElementById(`qty-${itemId}`);
+            if (!quantityEl) {
+                console.error('❌ Quantity element not found for item:', itemId);
+                return;
+            }
+            
+            const currentQty = parseInt(quantityEl.textContent) || 0;
+            const newQty = Math.max(0, currentQty + change);
+            
+            quantityEl.textContent = newQty;
+            console.log('✅ Quantity updated:', itemId, 'from', currentQty, 'to', newQty);
+            
+            // Find the item
+            let item = null;
+            if (window.menuItemsData && window.menuItemsData.length > 0) {
+                item = window.menuItemsData.find(item => item.id === itemId);
+            }
+            
+            if (!item) {
+                console.error('❌ Menu item not found:', itemId);
+                return;
+            }
+            
+            // Update cart
+            if (newQty === 0) {
+                delete cart[itemId];
+            } else {
+                cart[itemId] = {
+                    ...item,
+                    quantity: newQty
+                };
+            }
+            
+            console.log('🛒 Cart updated:', cart);
+        }
+
+        function testUpdateQuantity() {
+            if (window.menuItemsData && window.menuItemsData.length > 0) {
+                const firstItem = window.menuItemsData[0];
+                console.log('🧪 Testing updateQuantity with:', firstItem.id);
+                updateQuantity(firstItem.id, 1);
+            } else {
+                console.error('❌ No menu data available for testing');
+            }
+        }
+
+        function testCallStaff() {
+            console.log('🧪 Testing call staff...');
+            fetch('/api/call-staff', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    customer_name: 'Test User',
+                    table_number: '1'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Call Staff Response:', data);
+                alert('Call Staff Result: ' + data.message);
+            })
+            .catch(error => {
+                console.error('❌ Call Staff Error:', error);
+                alert('Call Staff Error: ' + error.message);
+            });
+        }
+
+        // Make functions global
+        window.updateQuantity = updateQuantity;
+        window.testUpdateQuantity = testUpdateQuantity;
+        window.testCallStaff = testCallStaff;
+
+        console.log('🚀 Debug page loaded');
+    </script>
+</body>
+</html>

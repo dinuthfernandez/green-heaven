@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cart Functionality</title>
+</head>
+<body>
+    <script>
+        // Test if we can access the global variables
+        function testCustomerJS() {
+            console.log('Testing customer.js functionality...');
+            
+            // Check if global variables exist
+            console.log('customerName:', typeof customerName !== 'undefined' ? customerName : 'NOT DEFINED');
+            console.log('tableNumber:', typeof tableNumber !== 'undefined' ? tableNumber : 'NOT DEFINED');
+            console.log('menuItems:', typeof menuItems !== 'undefined' ? menuItems.length + ' items' : 'NOT DEFINED');
+            console.log('cart:', typeof cart !== 'undefined' ? cart : 'NOT DEFINED');
+            
+            // Check if key functions exist
+            console.log('updateQuantity function:', typeof updateQuantity !== 'undefined' ? 'EXISTS' : 'NOT DEFINED');
+            console.log('callStaff function:', typeof callStaff !== 'undefined' ? 'EXISTS' : 'NOT DEFINED');
+            console.log('placeOrder function:', typeof placeOrder !== 'undefined' ? 'EXISTS' : 'NOT DEFINED');
+            
+            // Test menu access
+            if (typeof menuItems !== 'undefined' && menuItems.length > 0) {
+                console.log('First menu item:', menuItems[0]);
+                console.log('Sample item for testing:', {
+                    id: menuItems[0].id,
+                    name: menuItems[0].name,
+                    price: menuItems[0].price
+                });
+            }
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', testCustomerJS);
+    </script>
+</body>
+</html>
