@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
 import os
@@ -701,7 +701,7 @@ def load_menu_items():
                 'name': item.get('name'),
                 'description': item.get('description', ''),
                 'price': float(item.get('price', 0)),
-                'image': item.get('image_url') or '/static/images/placeholder.svg',
+                'image': '/static/images/m.png',
                 'category': item.get('category', 'Main Course'),
                 'available': item.get('available', True)
             }
@@ -716,7 +716,7 @@ def load_menu_items():
             'name': 'Traditional Sri Lankan Curry',
             'description': 'Authentic curry with coconut milk, served with rice and papadum',
             'price': 1250.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Sri Lankan Specials',
             'available': True
         },
@@ -725,7 +725,7 @@ def load_menu_items():
             'name': 'Chicken Kottu Roti',
             'description': 'Chopped flatbread stir-fried with chicken, vegetables and spices',
             'price': 950.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Sri Lankan Specials',
             'available': True
         },
@@ -734,7 +734,7 @@ def load_menu_items():
             'name': 'Egg Hoppers (2 pieces)',
             'description': 'Traditional bowl-shaped pancakes with egg, served with sambol',
             'price': 450.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Appetizers',
             'available': True
         },
@@ -743,7 +743,7 @@ def load_menu_items():
             'name': 'Fish Curry',
             'description': 'Fresh fish in aromatic spices with coconut gravy',
             'price': 1350.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Sri Lankan Specials',
             'available': True
         },
@@ -752,7 +752,7 @@ def load_menu_items():
             'name': 'Pol Sambol',
             'description': 'Traditional coconut relish with chili and lime',
             'price': 250.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Sides',
             'available': True
         },
@@ -761,7 +761,7 @@ def load_menu_items():
             'name': 'Papadum (4 pieces)',
             'description': 'Crispy lentil wafers',
             'price': 200.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Sides',
             'available': True
         },
@@ -770,7 +770,7 @@ def load_menu_items():
             'name': 'Mango Lassi',
             'description': 'Fresh mango yogurt drink',
             'price': 350.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Beverages',
             'available': True
         },
@@ -779,7 +779,7 @@ def load_menu_items():
             'name': 'Thai Green Curry',
             'description': 'Spicy green curry with vegetables or chicken',
             'price': 1150.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'International',
             'available': True
         },
@@ -788,7 +788,7 @@ def load_menu_items():
             'name': 'Special Fried Rice',
             'description': 'Wok-fried rice with egg and vegetables',
             'price': 850.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Rice & Noodles',
             'available': True
         },
@@ -797,7 +797,7 @@ def load_menu_items():
             'name': 'Garlic Naan',
             'description': 'Fresh baked bread with garlic and herbs',
             'price': 350.00,
-            'image': '/static/images/placeholder.svg',
+            'image': '/static/images/m.png',
             'category': 'Breads',
             'available': True
         }
@@ -808,6 +808,11 @@ menu_items = load_menu_items()
 
 # Initialize empty data (orders now use persistent storage)
 staff_alerts = []
+
+@app.route('/debug')
+def debug_page():
+    """Debug page for testing menu functionality"""
+    return send_from_directory('.', 'debug_menu.html')
 
 # Routes for customer pages
 @app.route('/')
@@ -1225,6 +1230,47 @@ def get_orders():
         filtered_orders = [order for order in orders if order['status'] == status_filter]
         return jsonify(filtered_orders)
     return jsonify(orders)
+
+@app.route('/api/orders/clear-all', methods=['DELETE'])
+def clear_all_orders():
+    """Clear all orders from the system"""
+    try:
+        # Clear from Supabase if available
+        if supabase:
+            try:
+                # Get all order IDs first
+                result = supabase.table('orders').select('id').execute()
+                if result.data:
+                    for order in result.data:
+                        supabase.table('orders').delete().eq('id', order['id']).execute()
+                    print(f"✅ Cleared {len(result.data)} orders from Supabase")
+            except Exception as e:
+                print(f"⚠️ Error clearing Supabase orders: {e}")
+        
+        # Clear local storage
+        save_data('orders', [])
+        
+        # Reset daily totals for today
+        daily_totals = load_data('daily_totals')
+        today = datetime.now().strftime('%Y-%m-%d')
+        for totals in daily_totals:
+            if totals.get('date') == today:
+                totals.update({
+                    'digital_orders': 0,
+                    'manual_orders': 0,
+                    'digital_revenue': 0.0,
+                    'manual_revenue': 0.0,
+                    'total_orders': 0,
+                    'total_revenue': 0.0
+                })
+                break
+        save_data('daily_totals', daily_totals)
+        
+        return jsonify({'status': 'success', 'message': 'All orders cleared successfully'})
+        
+    except Exception as e:
+        print(f"Error clearing all orders: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/orders/stats')
 def get_order_stats():
@@ -1693,6 +1739,11 @@ def update_order_status_new(order_id):
                 order['status'] = new_status
                 order['updated_at'] = datetime.now().isoformat()
                 order_updated = True
+                # Update in Supabase database
+                try:
+                    update_document('orders', order_id, {'status': new_status})
+                except Exception as e:
+                    print(f"Warning: Failed to update order in Supabase: {e}")
                 break
         
         if order_updated:

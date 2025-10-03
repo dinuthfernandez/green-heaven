@@ -6,7 +6,15 @@
     <title>Green Heaven - Menu</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/customer.css') }}">
     <!-- Preload critical resources for faster loading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" hr        // Place order
+        function placeOrder() {
+            console.log('📋 Place order clicked');
+            
+            const items = Object.values(simpleCart);
+            if (items.length === 0) {
+                console.log('❌ Cannot place order: cart is empty');
+                return;
+            }://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
     <!-- Load Font Awesome asynchronously -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -36,13 +44,42 @@
             </div>
         </header>
 
+        <!-- Order Status Section -->
+        <div class="order-status-section" id="order-status-section" style="display: none;">
+            <div class="status-header">
+                <h3><i class="fas fa-receipt"></i> Your Order Status</h3>
+                <button class="toggle-status-btn" id="toggle-status-btn">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="status-content" id="status-content">
+                <div class="order-progress">
+                    <div class="progress-step" data-status="pending">
+                        <div class="step-icon"><i class="fas fa-clock"></i></div>
+                        <span>Order Received</span>
+                    </div>
+                    <div class="progress-step" data-status="preparing">
+                        <div class="step-icon"><i class="fas fa-chef-hat"></i></div>
+                        <span>Preparing</span>
+                    </div>
+                    <div class="progress-step" data-status="ready">
+                        <div class="step-icon"><i class="fas fa-check-circle"></i></div>
+                        <span>Ready to Serve</span>
+                    </div>
+                </div>
+                <div class="current-orders" id="current-orders">
+                    <!-- Orders will be populated here -->
+                </div>
+            </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="action-buttons">
-            <button class="call-staff-btn" id="call-staff-btn">
+            <button class="call-staff-btn" id="call-staff-btn" onclick="callStaff()">
                 <i class="fas fa-bell"></i>
                 <span>Call Staff</span>
             </button>
-            <button class="cart-btn" id="cart-btn">
+            <button class="cart-btn" id="cart-btn" onclick="showCart()">
                 <i class="fas fa-shopping-cart"></i>
                 <span>Cart (<span id="cart-count">0</span>)</span>
                 <span class="cart-total">LKR <span id="cart-total">0.00</span></span>
@@ -52,11 +89,15 @@
         <!-- Menu Categories -->
         <div class="menu-categories">
             <button class="category-btn active" data-category="all">All Items</button>
-            <button class="category-btn" data-category="Appetizers">Appetizers</button>
-            <button class="category-btn" data-category="Main Course">Main Course</button>
-            <button class="category-btn" data-category="Sri Lankan Specials">Sri Lankan Specials</button>
-            <button class="category-btn" data-category="Desserts">Desserts</button>
-            <button class="category-btn" data-category="Beverages">Beverages</button>
+            <button class="category-btn" data-category="Starters">Starters</button>
+            <button class="category-btn" data-category="Soup">Soup</button>
+            <button class="category-btn" data-category="Sandwiches">Sandwiches</button>
+            <button class="category-btn" data-category="Salads">Salads</button>
+            <button class="category-btn" data-category="Main Dishes">Main Dishes</button>
+            <button class="category-btn" data-category="Rice">Rice</button>
+            <button class="category-btn" data-category="Noodles">Noodles</button>
+            <button class="category-btn" data-category="Pasta">Pasta</button>
+            <button class="category-btn" data-category="Grill Recipes">Grill</button>
         </div>
 
         <!-- Menu Items -->
@@ -95,7 +136,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2><i class="fas fa-shopping-cart"></i> Your Order</h2>
-                    <button class="close-modal" id="close-cart-modal">&times;</button>
+                    <button class="close-modal" id="close-cart-modal" onclick="hideCart()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div id="cart-items"></div>
@@ -106,8 +147,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-secondary" id="close-cart-modal-btn">Continue Shopping</button>
-                    <button class="btn-primary" id="place-order-btn">Place Order</button>
+                    <button class="btn-secondary" id="close-cart-modal-btn" onclick="hideCart()">Continue Shopping</button>
+                    <button class="btn-primary" id="place-order-btn" onclick="placeOrder()">Place Order</button>
                 </div>
             </div>
         </div>
@@ -189,93 +230,222 @@
         const customerName = "{{ customer_name }}";
         const tableNumber = "{{ table_number }}";
         
-        // Menu items will be loaded dynamically from API
-        let menuItems = [];
+        // Simple cart object
+        let simpleCart = {};
         
-        // Cart data
-        let cart = {};
-        let orderStatus = null;
+        // Menu items - globally available for customer.js
+        window.menuItemsData = {{ menu_items | tojson | safe }};
         
-        // Supabase real-time configuration
-        const supabaseUrl = '{{ supabase_url or "" }}';
-        const supabaseAnonKey = '{{ supabase_anon_key or "" }}';
-        let supabaseClient = null;
+        // IMMEDIATE WORKING FUNCTIONS - Available right away
         
-        // Initialize Supabase real-time subscriptions
-        function initializeSupabaseRealtime() {
-            if (window.supabase && supabaseUrl && supabaseAnonKey) {
-                try {
-                    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-                    
-                    // Subscribe to real-time order updates
-                    const ordersSubscription = supabaseClient
-                        .channel('orders-channel')
-                        .on('postgres_changes', 
-                            { 
-                                event: '*', 
-                                schema: 'public', 
-                                table: 'orders',
-                                filter: `table_number=eq.${tableNumber}`
-                            }, 
-                            (payload) => {
-                                console.log('🔄 Real-time order update:', payload);
-                                handleOrderUpdate(payload);
-                            }
-                        )
-                        .subscribe();
-                    
-                    // Subscribe to staff call updates
-                    const staffCallsSubscription = supabaseClient
-                        .channel('staff-calls-channel')
-                        .on('postgres_changes',
-                            {
-                                event: '*',
-                                schema: 'public',
-                                table: 'staff_calls',
-                                filter: `table_number=eq.${tableNumber}`
-                            },
-                            (payload) => {
-                                console.log('🔔 Staff call update:', payload);
-                                handleStaffCallUpdate(payload);
-                            }
-                        )
-                        .subscribe();
-                    
-                    console.log('✅ Supabase real-time subscriptions active');
-                    showCustomerNotification('Real-time updates connected! ⚡', 'success', 2000);
-                    
-                } catch (error) {
-                    console.error('❌ Failed to initialize Supabase real-time:', error);
-                }
+        // Update quantity function that works immediately
+        function updateQuantity(itemId, change) {
+            console.log('� updateQuantity called:', itemId, change);
+            
+            const quantityEl = document.getElementById(`qty-${itemId}`);
+            if (!quantityEl) {
+                console.error('❌ Quantity element not found for item:', itemId);
+                return;
             }
+            
+            const currentQty = parseInt(quantityEl.textContent) || 0;
+            const newQty = Math.max(0, currentQty + change);
+            
+            // Update display
+            quantityEl.textContent = newQty;
+            
+            // Find item data
+            const item = window.menuItemsData.find(item => item.id === itemId);
+            if (!item) {
+                console.error('❌ Item not found:', itemId);
+                return;
+            }
+            
+            // Update simple cart
+            if (newQty === 0) {
+                delete simpleCart[itemId];
+            } else {
+                simpleCart[itemId] = {
+                    id: itemId,
+                    name: item.name,
+                    price: item.price,
+                    quantity: newQty
+                };
+            }
+            
+            // Update cart display
+            updateCartDisplay();
+            
+            console.log('✅ Cart updated:', simpleCart);
         }
         
-        // Handle real-time order updates
-        function handleOrderUpdate(payload) {
-            if (payload.eventType === 'UPDATE' && orderStatus) {
-                const updatedOrder = payload.new;
-                if (updatedOrder.id === orderStatus.order_id) {
-                    updateOrderStatus(updatedOrder.status);
-                    playNotificationSound();
-                }
-            }
+        // Update cart display
+        function updateCartDisplay() {
+            const items = Object.values(simpleCart);
+            const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+            const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            document.getElementById('cart-count').textContent = totalItems;
+            document.getElementById('cart-total').textContent = totalPrice.toFixed(2);
+            
+            console.log('🛒 Cart display updated:', totalItems, 'items, LKR', totalPrice.toFixed(2));
         }
         
-        // Handle real-time staff call updates
-        function handleStaffCallUpdate(payload) {
-            if (payload.eventType === 'UPDATE') {
-                const updatedCall = payload.new;
-                if (updatedCall.status === 'acknowledged') {
-                    showCustomerNotification('Staff acknowledged your call! 👨‍🍳', 'success', 3000);
-                } else if (updatedCall.status === 'resolved') {
-                    showCustomerNotification('Thank you! Call resolved. ✅', 'success', 2000);
-                }
-            }
+        // Call staff function that works immediately
+        function callStaff() {
+            console.log('📞 Call staff clicked');
+            
+            const data = {
+                customer_name: customerName,
+                table_number: tableNumber
+            };
+            
+            // Show loading
+            const btn = document.getElementById('call-staff-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calling...';
+            btn.disabled = true;
+            
+            fetch('/api/call-staff', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Call staff response:', data);
+                alert('✅ ' + data.message);
+            })
+            .catch(error => {
+                console.error('❌ Call staff error:', error);
+                alert('❌ Failed to call staff. Please try again.');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
         }
         
-        // Initialize page - menu will be loaded dynamically via API
-        console.log('📱 Customer page ready for', customerName, 'at table', tableNumber);
-        console.log('🔄 Menu will be loaded dynamically from Supabase');
+        // Show cart modal
+        function showCart() {
+            console.log('🛒 Show cart clicked');
+            
+            populateCartModal();
+            document.getElementById('cart-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Populate cart modal
+        function populateCartModal() {
+            const cartItemsContainer = document.getElementById('cart-items');
+            const items = Object.values(simpleCart);
+            
+            if (items.length === 0) {
+                cartItemsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #64748b;">
+                        <i class="fas fa-shopping-cart" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                        <h3>Your cart is empty</h3>
+                        <p>Add some delicious items from our menu!</p>
+                    </div>
+                `;
+                document.getElementById('final-total').textContent = '0.00';
+                document.getElementById('place-order-btn').disabled = true;
+                return;
+            }
+            
+            // Enable place order button
+            document.getElementById('place-order-btn').disabled = false;
+            
+            cartItemsContainer.innerHTML = items.map(item => `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <h4>${item.name}</h4>
+                        <div class="cart-item-details">${item.quantity} × LKR ${item.price.toFixed(2)}</div>
+                    </div>
+                    <div class="cart-item-price">LKR ${(item.price * item.quantity).toFixed(2)}</div>
+                </div>
+            `).join('');
+            
+            const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('final-total').textContent = total.toFixed(2);
+        }
+        
+        // Hide cart modal
+        function hideCart() {
+            document.getElementById('cart-modal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Place order
+        function placeOrder() {
+            console.log('� Place order clicked');
+            
+            const items = Object.values(simpleCart);
+            if (items.length === 0) {
+                alert('Your cart is empty');
+                return;
+            }
+            
+            const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            const orderData = {
+                customer_name: customerName,
+                table_number: tableNumber,
+                items: items,
+                total: total
+            };
+            
+            // Show loading
+            const btn = document.getElementById('place-order-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Placing Order...';
+            btn.disabled = true;
+            
+            fetch('/api/place-order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Order placed:', data);
+                alert('✅ Order placed successfully! Order ID: ' + data.order_id);
+                
+                // Clear cart
+                simpleCart = {};
+                updateCartDisplay();
+                
+                // Reset quantities
+                document.querySelectorAll('.quantity').forEach(el => el.textContent = '0');
+                
+                // Hide modal
+                hideCart();
+            })
+            .catch(error => {
+                console.error('❌ Order placement error:', error);
+                alert('❌ Failed to place order. Please try again.');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+        
+        // Make functions globally available
+        window.updateQuantity = updateQuantity;
+        window.callStaff = callStaff;
+        window.showCart = showCart;
+        window.hideCart = hideCart;
+        window.placeOrder = placeOrder;
+        
+        // Debug logging
+        console.log('🏷️ Customer:', customerName, 'Table:', tableNumber);
+        console.log('📦 Menu data loaded:', window.menuItemsData ? window.menuItemsData.length : 0, 'items');
+        console.log('✅ All functions ready immediately!');
     </script>
     <script src="{{ url_for('static', filename='js/customer.js') }}"></script>
 </body>

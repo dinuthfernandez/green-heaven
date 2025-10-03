@@ -9,12 +9,24 @@ const callSuccessModal = document.getElementById('call-success-modal');
 const menuGrid = document.getElementById('menu-grid');
 const categoryBtns = document.querySelectorAll('.category-btn');
 
+// Global variables
+let cart = {};
+let orderStatus = null;
+let customerOrders = [];
+let menuItems = []; // Will be populated from the template or API
+
 // Initialize socket connection with proper error handling
 let socket;
 let connectionRetries = 0;
 const maxRetries = 3;
 
 function initializeSocket() {
+    // Check if Socket.IO is available
+    if (typeof io === 'undefined') {
+        console.warn('⚠️ Socket.IO not available, some features may not work');
+        return;
+    }
+    
     try {
         // Show a subtle loading indicator for socket connection
         console.log('🔄 Connecting to real-time updates...');
@@ -57,16 +69,21 @@ function initializeSocket() {
 
         // Listen for order status updates
         socket.on('order_status_updated', function(data) {
-            if (orderStatus && data.order_id === orderStatus.order_id) {
-                updateOrderStatus(data.status);
-                playNotificationSound();
-                
-                // Show notification for important status changes
-                if (data.status === 'ready') {
-                    showCustomerNotification('Your order is ready for pickup!', 'success');
-                } else if (data.status === 'preparing') {
-                    showCustomerNotification('Your order is being prepared', 'info');
-                }
+            // Update the order in our local list
+            const orderIndex = customerOrders.findIndex(order => order.order_id === data.order_id);
+            if (orderIndex !== -1) {
+                customerOrders[orderIndex].status = data.status;
+            }
+            
+            // Update the UI
+            updateOrderStatusDisplay();
+            playNotificationSound();
+            
+            // Show notification for important status changes
+            if (data.status === 'ready') {
+                showCustomerNotification('Your order is ready for pickup!', 'success');
+            } else if (data.status === 'preparing') {
+                showCustomerNotification('Your order is being prepared', 'info');
             }
         });
 
@@ -86,14 +103,55 @@ initializeSocket();
 // Cart functionality
 function updateQuantity(itemId, change) {
     const quantityEl = document.getElementById(`qty-${itemId}`);
-    const currentQty = parseInt(quantityEl.textContent);
+    if (!quantityEl) {
+        console.error('Quantity element not found for item:', itemId);
+        return;
+    }
+    
+    const currentQty = parseInt(quantityEl.textContent) || 0;
     const newQty = Math.max(0, currentQty + change);
     
     quantityEl.textContent = newQty;
     
-    // Find the item
-    const item = menuItems.find(item => item.id === itemId);
-    if (!item) return;
+    // Find the item - check both menuItems and window.menuItemsData
+    let item = null;
+    if (menuItems && menuItems.length > 0) {
+        item = menuItems.find(item => item.id === itemId);
+    } else if (window.menuItemsData && window.menuItemsData.length > 0) {
+        item = window.menuItemsData.find(item => item.id === itemId);
+        // Update menuItems array if it wasn't initialized
+        if (!menuItems || menuItems.length === 0) {
+            menuItems = window.menuItemsData;
+        }
+    }
+    
+    if (!item) {
+        console.error('Menu item not found:', itemId);
+        // Try to get item data from the DOM as fallback
+        const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+        if (itemElement) {
+            const nameEl = itemElement.querySelector('.item-name');
+            const priceEl = itemElement.querySelector('.item-price');
+            if (nameEl && priceEl) {
+                const priceText = priceEl.textContent.replace('LKR', '').trim();
+                const price = parseFloat(priceText);
+                if (!isNaN(price)) {
+                    item = {
+                        id: itemId,
+                        name: nameEl.textContent.trim(),
+                        price: price,
+                        description: itemElement.querySelector('.item-description')?.textContent?.trim() || '',
+                        category: itemElement.dataset.category || 'Unknown'
+                    };
+                }
+            }
+        }
+    }
+    
+    if (!item) {
+        console.error('Could not find or create item data for:', itemId);
+        return;
+    }
     
     // Update cart
     if (newQty === 0) {
@@ -107,6 +165,9 @@ function updateQuantity(itemId, change) {
     
     updateCartDisplay();
 }
+
+// Make updateQuantity available globally for inline onclick handlers
+window.updateQuantity = updateQuantity;
 
 function updateCartDisplay() {
     const cartCount = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
@@ -347,10 +408,17 @@ function placeOrder() {
     })
     .then(data => {
         if (data.status === 'success') {
-            orderStatus = {
+            // Add order to our local list
+            const newOrder = {
                 order_id: data.order_id,
-                status: 'pending'
+                status: 'pending',
+                items: Object.values(cart),
+                timestamp: new Date().toLocaleTimeString()
             };
+            customerOrders.push(newOrder);
+            
+            // Update display
+            updateOrderStatusDisplay();
             
             // Clear cart
             cart = {};
@@ -429,24 +497,82 @@ function populateCartModal() {
     document.getElementById('final-total').textContent = total.toFixed(2);
 }
 
-function updateOrderStatus(status) {
-    const statusText = document.getElementById('order-status-text');
+function updateOrderStatusDisplay() {
+    const orderStatusSection = document.getElementById('order-status-section');
+    const currentOrdersDiv = document.getElementById('current-orders');
+    
+    if (customerOrders.length === 0) {
+        orderStatusSection.style.display = 'none';
+        return;
+    }
+    
+    orderStatusSection.style.display = 'block';
+    
+    // Update progress steps based on most advanced order
+    const mostAdvancedStatus = getMostAdvancedStatus();
+    updateProgressSteps(mostAdvancedStatus);
+    
+    // Display all current orders
+    currentOrdersDiv.innerHTML = customerOrders.map(order => {
+        const statusText = getStatusText(order.status);
+        const statusClass = getStatusClass(order.status);
+        const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+        
+        return `
+            <div class="order-item ${statusClass}">
+                <div class="order-header">
+                    <span class="order-id">Order #${order.order_id}</span>
+                    <span class="order-time">${order.timestamp}</span>
+                </div>
+                <div class="order-details">
+                    <span class="item-count">${itemCount} items</span>
+                    <span class="order-status">${statusText}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getMostAdvancedStatus() {
+    const statusOrder = ['pending', 'preparing', 'ready', 'completed'];
+    let mostAdvanced = 'pending';
+    
+    customerOrders.forEach(order => {
+        if (statusOrder.indexOf(order.status) > statusOrder.indexOf(mostAdvanced)) {
+            mostAdvanced = order.status;
+        }
+    });
+    
+    return mostAdvanced;
+}
+
+function updateProgressSteps(currentStatus) {
+    const steps = document.querySelectorAll('.progress-step');
+    const statusOrder = ['pending', 'preparing', 'ready'];
+    const currentIndex = statusOrder.indexOf(currentStatus);
+    
+    steps.forEach((step, index) => {
+        step.classList.remove('active', 'completed');
+        if (index < currentIndex) {
+            step.classList.add('completed');
+        } else if (index === currentIndex) {
+            step.classList.add('active');
+        }
+    });
+}
+
+function getStatusText(status) {
     const statusMessages = {
         'pending': 'Order Received',
-        'preparing': 'Preparing Your Order',
-        'ready': 'Order Ready for Pickup',
-        'completed': 'Order Completed'
+        'preparing': 'Being Prepared',
+        'ready': 'Ready for Pickup',
+        'completed': 'Completed'
     };
-    
-    if (statusText) {
-        statusText.textContent = statusMessages[status] || status;
-        
-        // Show status update notification
-        if (status === 'ready') {
-            // You could show a notification here
-            console.log('Order is ready!');
-        }
-    }
+    return statusMessages[status] || status;
+}
+
+function getStatusClass(status) {
+    return `status-${status}`;
 }
 
 function playNotificationSound() {
@@ -505,6 +631,17 @@ document.querySelectorAll('.modal').forEach(modal => {
 // Initialize with proper error handling
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        // Initialize menu items from global data
+        if (window.menuItemsData && Array.isArray(window.menuItemsData)) {
+            menuItems = window.menuItemsData;
+            console.log('✅ Menu pre-loaded with', menuItems.length, 'items');
+            console.log('📋 Menu items:', menuItems.map(item => ({ id: item.id, name: item.name })));
+        } else {
+            console.log('⚠️ No menu data found in window.menuItemsData, will load from API');
+            menuItems = []; // Initialize as empty array
+            loadMenuItems();
+        }
+        
         // Add notification styles
         addNotificationStyles();
         
@@ -520,8 +657,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 100);
         
-        // Menu items are already loaded from server template - no need to fetch
-        console.log('✅ Menu pre-loaded with', menuItems.length, 'items');
+        // Initialize order status section
+        initializeOrderStatus();
         
         // Initialize socket connection after page is ready (non-blocking)
         setTimeout(() => {
@@ -603,4 +740,28 @@ function fetchWithRetry(url, options = {}, retries = 2) {
             }
             throw error;
         });
+}
+
+// Initialize order status functionality
+function initializeOrderStatus() {
+    const toggleBtn = document.getElementById('toggle-status-btn');
+    const statusContent = document.getElementById('status-content');
+    
+    if (toggleBtn && statusContent) {
+        toggleBtn.addEventListener('click', () => {
+            const isExpanded = statusContent.style.display !== 'none';
+            statusContent.style.display = isExpanded ? 'none' : 'block';
+            toggleBtn.innerHTML = isExpanded ? '<i class="fas fa-chevron-down"></i>' : '<i class="fas fa-chevron-up"></i>';
+        });
+    }
+    
+    // Load existing orders for this table
+    loadCustomerOrders();
+}
+
+// Load existing orders for this customer/table
+function loadCustomerOrders() {
+    // This would be called to load any existing orders for this table
+    // For now, we'll just initialize the display
+    updateOrderStatusDisplay();
 }
