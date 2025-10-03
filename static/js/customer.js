@@ -180,18 +180,36 @@ function updateCartDisplay() {
     cartBtn.style.opacity = cartCount > 0 ? '1' : '0.6';
 }
 
-// Category filtering
+// Category filtering with improved debugging
 function filterMenuItems(category) {
+    console.log('🔍 Filtering menu items by category:', category);
+    
     const menuItems = document.querySelectorAll('.menu-item');
+    console.log('📦 Found', menuItems.length, 'menu items to filter');
+    
+    let visibleCount = 0;
+    let hiddenCount = 0;
     
     menuItems.forEach(item => {
         const itemCategory = item.dataset.category;
+        console.log('📋 Item category:', itemCategory, 'Filter:', category);
+        
         if (category === 'all' || itemCategory === category) {
             item.classList.remove('hidden');
+            item.style.display = ''; // Ensure display is reset
+            visibleCount++;
         } else {
             item.classList.add('hidden');
+            hiddenCount++;
         }
     });
+    
+    console.log('✅ Filtering complete:', visibleCount, 'visible,', hiddenCount, 'hidden');
+    
+    // Show feedback if no items are visible for this category
+    if (visibleCount === 0 && category !== 'all') {
+        showCustomerNotification(`No items found in ${category} category`, 'info', 2000);
+    }
 }
 
 // Call staff functionality with improved reliability

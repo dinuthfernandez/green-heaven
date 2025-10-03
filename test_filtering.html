@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Menu Filtering</title>
+</head>
+<body>
+    <h2>Menu Filtering Test</h2>
+    
+    <!-- Category Buttons -->
+    <div>
+        <button onclick="filterMenuItems('all')">All Items</button>
+        <button onclick="filterMenuItems('Starters')">Starters</button>
+        <button onclick="filterMenuItems('Soup')">Soup</button>
+        <button onclick="filterMenuItems('Main Dishes')">Main Dishes</button>
+        <button onclick="filterMenuItems('Rice')">Rice</button>
+    </div>
+    
+    <!-- Sample Menu Items -->
+    <div id="menu-grid">
+        <div class="menu-item" data-category="Starters">
+            <h3>Sample Starter</h3>
+            <p>Category: Starters</p>
+        </div>
+        <div class="menu-item" data-category="Soup">
+            <h3>Sample Soup</h3>
+            <p>Category: Soup</p>
+        </div>
+        <div class="menu-item" data-category="Main Dishes">
+            <h3>Sample Main Dish</h3>
+            <p>Category: Main Dishes</p>
+        </div>
+        <div class="menu-item" data-category="Rice">
+            <h3>Sample Rice</h3>
+            <p>Category: Rice</p>
+        </div>
+    </div>
+    
+    <style>
+        .menu-item {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+            display: block;
+        }
+        .menu-item.hidden {
+            display: none;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+        }
+    </style>
+    
+    <script>
+        // Category filtering with debugging
+        function filterMenuItems(category) {
+            console.log('🔍 Filtering menu items by category:', category);
+            
+            const menuItems = document.querySelectorAll('.menu-item');
+            console.log('📦 Found', menuItems.length, 'menu items to filter');
+            
+            let visibleCount = 0;
+            let hiddenCount = 0;
+            
+            menuItems.forEach(item => {
+                const itemCategory = item.dataset.category;
+                console.log('📋 Item category:', itemCategory, 'Filter:', category);
+                
+                if (category === 'all' || itemCategory === category) {
+                    item.classList.remove('hidden');
+                    item.style.display = '';
+                    visibleCount++;
+                } else {
+                    item.classList.add('hidden');
+                    hiddenCount++;
+                }
+            });
+            
+            console.log('✅ Filtering complete:', visibleCount, 'visible,', hiddenCount, 'hidden');
+            
+            // Update page title to show result
+            document.title = `Filter: ${category} (${visibleCount} items)`;
+        }
+        
+        // Test all filters on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 Running filter tests...');
+            
+            // Test each category
+            const categories = ['all', 'Starters', 'Soup', 'Main Dishes', 'Rice'];
+            
+            categories.forEach((cat, index) => {
+                setTimeout(() => {
+                    console.log(`\n--- Testing ${cat} ---`);
+                    filterMenuItems(cat);
+                }, index * 1000);
+            });
+        });
+    </script>
+</body>
+</html>
