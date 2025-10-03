@@ -78,26 +78,51 @@ if SUPABASE_AVAILABLE and create_client:
     
     if supabase_url and supabase_key:
         try:
-            # Create Supabase client - try simple connection first
-            try:
-                supabase = create_client(supabase_url, supabase_key)
-                print(f"✅ Supabase connected: {supabase_url}")
-                print("🔄 Real-time database active - lightning fast performance!")
+            # Create Supabase client - enhanced for production environments
+            is_production = bool(os.getenv('PORT')) or bool(os.getenv('RENDER'))
+            
+            if is_production:
+                print("🚀 Initializing Supabase for production environment")
                 
-            except Exception as ssl_error:
-                print(f"⚠️ Initial connection failed, trying compatibility mode: {ssl_error}")
-                
-                # For compatibility issues, try with basic retry
+                # Production-specific configuration
                 try:
-                    import time
-                    time.sleep(1)  # Brief pause before retry
+                    # Try with production-optimized settings
                     supabase = create_client(supabase_url, supabase_key)
-                    print(f"✅ Supabase connected (retry successful): {supabase_url}")
-                    print("🔄 Real-time database active with retry!")
+                    print(f"✅ Supabase connected in production mode: {supabase_url}")
+                    print("🔄 Real-time database active for production!")
                     
-                except Exception as retry_error:
-                    print(f"❌ Connection failed after retry: {retry_error}")
-                    print("📁 Continuing with local storage only")
+                except Exception as prod_error:
+                    print(f"⚠️ Production connection attempt failed: {prod_error}")
+                    
+                    # Production fallback - try with different approach
+                    try:
+                        import ssl
+                        import os
+                        
+                        # Set environment for production SSL compatibility
+                        if 'PYTHONHTTPSVERIFY' not in os.environ:
+                            os.environ['PYTHONHTTPSVERIFY'] = '0'
+                            print("🔧 Applied production SSL compatibility setting")
+                        
+                        supabase = create_client(supabase_url, supabase_key)
+                        print(f"✅ Supabase connected with production fallback: {supabase_url}")
+                        print("🔄 Real-time database active with production SSL fixes!")
+                        
+                    except Exception as fallback_error:
+                        print(f"❌ Production fallback also failed: {fallback_error}")
+                        print("📁 Will use local storage with error notifications")
+                        supabase = None
+                        
+            else:
+                # Development environment - standard connection
+                print("🏠 Initializing Supabase for development environment")
+                try:
+                    supabase = create_client(supabase_url, supabase_key)
+                    print(f"✅ Supabase connected in development mode: {supabase_url}")
+                    print("🔄 Real-time database active for development!")
+                    
+                except Exception as dev_error:
+                    print(f"⚠️ Development connection failed: {dev_error}")
                     supabase = None
             
             # Test connection if supabase client was created successfully
@@ -159,20 +184,47 @@ def delete_image_from_supabase(filename):
         return False
 
 def get_menu_items_from_supabase():
-    """Load menu items from Supabase database"""
+    """Load menu items from Supabase database with enhanced error handling"""
     if not supabase:
+        print("⚠️ Supabase client not available")
         return None
     
-    try:
-        result = supabase.table('menu_items').select('*').execute()
-        return result.data
-    except Exception as e:
-        error_message = str(e)
-        if "SSLSocket" in error_message or "SSL" in error_message:
-            print(f"🔐 SSL issue loading menu items from Supabase: {error_message}")
-        else:
-            print(f"❌ Error loading menu items from Supabase: {e}")
-        return None
+    max_retries = 3
+    retry_delay = 1  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"🔄 Attempting to load menu items from Supabase (attempt {attempt + 1}/{max_retries})")
+            result = supabase.table('menu_items').select('*').execute()
+            
+            if result.data:
+                print(f"✅ Successfully loaded {len(result.data)} menu items from Supabase")
+                return result.data
+            else:
+                print("⚠️ Supabase returned empty result")
+                return None
+                
+        except Exception as e:
+            error_message = str(e)
+            print(f"❌ Attempt {attempt + 1} failed: {error_message}")
+            
+            if "SSLSocket" in error_message or "SSL" in error_message:
+                print("🔐 SSL issue detected - this may be a production environment issue")
+            elif "timeout" in error_message.lower():
+                print("⏱️ Timeout detected - network issue")
+            elif "connection" in error_message.lower():
+                print("🌐 Connection issue detected")
+            
+            # If this is the last attempt, don't wait
+            if attempt < max_retries - 1:
+                print(f"⏳ Waiting {retry_delay} seconds before retry...")
+                import time
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print("❌ All retry attempts failed")
+                
+    return None
 
 def save_menu_item_to_supabase(menu_item):
     """Save or update menu item in Supabase"""
@@ -708,119 +760,71 @@ manual_orders = load_data('manual_orders')
 
 # Load menu items from Supabase or use fallback
 def load_menu_items():
-    """Load menu items with Supabase integration"""
-    # Try to load from Supabase first
+    """Load menu items with enhanced Supabase integration and production support"""
+    
+    # Check if we're in production environment
+    is_production = bool(os.getenv('PORT')) or bool(os.getenv('RENDER'))
+    
+    if is_production:
+        print("🚀 Production environment detected - using optimized loading")
+    else:
+        print("🏠 Development environment detected")
+    
+    # Try to load from Supabase first with enhanced error handling
     supabase_menu = get_menu_items_from_supabase()
     
-    if supabase_menu:
-        print(f"📊 Loaded {len(supabase_menu)} menu items from Supabase")
+    if supabase_menu and len(supabase_menu) > 0:
+        print(f"📊 Successfully loaded {len(supabase_menu)} menu items from Supabase")
+        
         # Convert Supabase format to app format
         formatted_items = []
         for item in supabase_menu:
-            formatted_item = {
-                'id': item.get('id'),
-                'name': item.get('name'),
-                'description': item.get('description', ''),
-                'price': float(item.get('price', 0)),
-                'image': '/static/images/m.png',
-                'category': item.get('category', 'Main Course'),
-                'available': item.get('available', True)
-            }
-            formatted_items.append(formatted_item)
-        return formatted_items
+            try:
+                formatted_item = {
+                    'id': item.get('id', ''),
+                    'name': item.get('name', 'Unknown Item'),
+                    'description': item.get('description', ''),
+                    'price': float(item.get('price', 0)),
+                    'image': item.get('image_url', '/static/images/m.png'),
+                    'category': item.get('category', 'Main Course'),
+                    'available': item.get('available', True)
+                }
+                formatted_items.append(formatted_item)
+            except Exception as e:
+                print(f"⚠️ Error formatting menu item {item.get('id', 'unknown')}: {e}")
+                continue
+                
+        if formatted_items:
+            print(f"✅ Successfully formatted {len(formatted_items)} menu items")
+            return formatted_items
+        else:
+            print("❌ No valid menu items after formatting")
     
-    # Fallback to default menu items
-    print("📂 Using fallback menu items")
+    # If we're in production and Supabase failed, this is a critical issue
+    if is_production:
+        print("🚨 CRITICAL: Supabase menu loading failed in production!")
+        print("💡 Check environment variables and network connectivity")
+        
+        # Log environment status for debugging
+        supabase_url = os.getenv('SUPABASE_URL')
+        supabase_key = os.getenv('SUPABASE_ANON_KEY')
+        print(f"📊 Environment check:")
+        print(f"  - SUPABASE_URL: {'✅ Set' if supabase_url else '❌ Missing'}")
+        print(f"  - SUPABASE_ANON_KEY: {'✅ Set' if supabase_key else '❌ Missing'}")
+        print(f"  - Supabase client: {'✅ Available' if supabase else '❌ Not initialized'}")
+    
+    # Fallback to default menu items with a warning
+    print("📂 Using fallback menu items - this should only happen during development or emergencies")
+    
     return [
         {
-            'id': 'sri-curry',
-            'name': 'Traditional Sri Lankan Curry',
-            'description': 'Authentic curry with coconut milk, served with rice and papadum',
-            'price': 1250.00,
+            'id': 'emergency-item-1',
+            'name': '⚠️ Menu Loading Issue',
+            'description': 'Please contact staff - menu system temporarily unavailable',
+            'price': 0.00,
             'image': '/static/images/m.png',
-            'category': 'Sri Lankan Specials',
-            'available': True
-        },
-        {
-            'id': 'kottu-roti',
-            'name': 'Chicken Kottu Roti',
-            'description': 'Chopped flatbread stir-fried with chicken, vegetables and spices',
-            'price': 950.00,
-            'image': '/static/images/m.png',
-            'category': 'Sri Lankan Specials',
-            'available': True
-        },
-        {
-            'id': 'hoppers',
-            'name': 'Egg Hoppers (2 pieces)',
-            'description': 'Traditional bowl-shaped pancakes with egg, served with sambol',
-            'price': 450.00,
-            'image': '/static/images/m.png',
-            'category': 'Appetizers',
-            'available': True
-        },
-        {
-            'id': 'fish-curry',
-            'name': 'Fish Curry',
-            'description': 'Fresh fish in aromatic spices with coconut gravy',
-            'price': 1350.00,
-            'image': '/static/images/m.png',
-            'category': 'Sri Lankan Specials',
-            'available': True
-        },
-        {
-            'id': 'pol-sambol',
-            'name': 'Pol Sambol',
-            'description': 'Traditional coconut relish with chili and lime',
-            'price': 250.00,
-            'image': '/static/images/m.png',
-            'category': 'Sides',
-            'available': True
-        },
-        {
-            'id': 'papadum',
-            'name': 'Papadum (4 pieces)',
-            'description': 'Crispy lentil wafers',
-            'price': 200.00,
-            'image': '/static/images/m.png',
-            'category': 'Sides',
-            'available': True
-        },
-        {
-            'id': 'mango-lassi',
-            'name': 'Mango Lassi',
-            'description': 'Fresh mango yogurt drink',
-            'price': 350.00,
-            'image': '/static/images/m.png',
-            'category': 'Beverages',
-            'available': True
-        },
-        {
-            'id': 'thai-curry',
-            'name': 'Thai Green Curry',
-            'description': 'Spicy green curry with vegetables or chicken',
-            'price': 1150.00,
-            'image': '/static/images/m.png',
-            'category': 'International',
-            'available': True
-        },
-        {
-            'id': 'fried-rice',
-            'name': 'Special Fried Rice',
-            'description': 'Wok-fried rice with egg and vegetables',
-            'price': 850.00,
-            'image': '/static/images/m.png',
-            'category': 'Rice & Noodles',
-            'available': True
-        },
-        {
-            'id': 'garlic-naan',
-            'name': 'Garlic Naan',
-            'description': 'Fresh baked bread with garlic and herbs',
-            'price': 350.00,
-            'image': '/static/images/m.png',
-            'category': 'Breads',
-            'available': True
+            'category': 'System Notice',
+            'available': False
         }
     ]
 
@@ -1222,6 +1226,58 @@ def get_menu():
     """Get all menu items with fresh data from Supabase"""
     fresh_menu_items = load_menu_items()
     return jsonify(fresh_menu_items)
+
+@app.route('/api/menu-debug')
+def get_menu_debug():
+    """Debug endpoint for menu loading issues in production"""
+    debug_info = {
+        'timestamp': datetime.now().isoformat(),
+        'environment': {
+            'is_production': bool(os.getenv('PORT')) or bool(os.getenv('RENDER')),
+            'port': os.getenv('PORT', 'not_set'),
+            'render': os.getenv('RENDER', 'not_set')
+        },
+        'supabase': {
+            'client_available': supabase is not None,
+            'url_configured': bool(os.getenv('SUPABASE_URL')),
+            'key_configured': bool(os.getenv('SUPABASE_ANON_KEY')),
+            'url_preview': os.getenv('SUPABASE_URL', '')[:50] + '...' if os.getenv('SUPABASE_URL') else 'not_set'
+        },
+        'menu_loading': {
+            'supabase_attempt': False,
+            'supabase_success': False,
+            'supabase_error': None,
+            'item_count': 0,
+            'fallback_used': False
+        }
+    }
+    
+    # Test Supabase connection
+    if supabase:
+        debug_info['menu_loading']['supabase_attempt'] = True
+        try:
+            supabase_menu = supabase.table('menu_items').select('*').execute()
+            if supabase_menu.data:
+                debug_info['menu_loading']['supabase_success'] = True
+                debug_info['menu_loading']['item_count'] = len(supabase_menu.data)
+            else:
+                debug_info['menu_loading']['supabase_error'] = 'Empty result from Supabase'
+        except Exception as e:
+            debug_info['menu_loading']['supabase_error'] = str(e)
+    
+    # Check final menu state
+    current_menu = load_menu_items()
+    debug_info['final_menu'] = {
+        'total_items': len(current_menu),
+        'sample_items': [{'id': item['id'], 'name': item['name'], 'category': item['category']} for item in current_menu[:3]],
+        'categories': list(set([item['category'] for item in current_menu]))
+    }
+    
+    # Check if fallback was used
+    if current_menu and current_menu[0].get('id') == 'emergency-item-1':
+        debug_info['menu_loading']['fallback_used'] = True
+    
+    return jsonify(debug_info)
 
 @app.route('/api/menu-item/<item_id>')
 def get_menu_item(item_id):
