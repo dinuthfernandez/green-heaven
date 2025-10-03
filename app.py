@@ -78,35 +78,42 @@ if SUPABASE_AVAILABLE and create_client:
     
     if supabase_url and supabase_key:
         try:
-            # Create Supabase client with Python 3.13 SSL compatibility
+            # Create Supabase client - try simple connection first
             try:
-                # Try with SSL verification disabled for Python 3.13 compatibility
-                import httpx
-                import ssl
-                
-                # Create SSL context for compatibility
-                ssl_context = ssl.create_default_context()
-                ssl_context.check_hostname = False
-                ssl_context.verify_mode = ssl.CERT_NONE
-                
                 supabase = create_client(supabase_url, supabase_key)
                 print(f"✅ Supabase connected: {supabase_url}")
                 print("🔄 Real-time database active - lightning fast performance!")
                 
             except Exception as ssl_error:
-                print(f"⚠️ SSL connection issue, trying fallback: {ssl_error}")
-                # Fallback: try without custom SSL settings
-                supabase = create_client(supabase_url, supabase_key)
-                print(f"✅ Supabase connected (fallback): {supabase_url}")
-                print("🔄 Real-time database active - lightning fast performance!")
+                print(f"⚠️ Initial connection failed, trying compatibility mode: {ssl_error}")
+                
+                # For compatibility issues, try with basic retry
+                try:
+                    import time
+                    time.sleep(1)  # Brief pause before retry
+                    supabase = create_client(supabase_url, supabase_key)
+                    print(f"✅ Supabase connected (retry successful): {supabase_url}")
+                    print("🔄 Real-time database active with retry!")
+                    
+                except Exception as retry_error:
+                    print(f"❌ Connection failed after retry: {retry_error}")
+                    print("📁 Continuing with local storage only")
+                    supabase = None
             
-            # Test connection
-            try:
-                test_result = supabase.table('menu_items').select('id').limit(1).execute()
-                print(f"💾 Real-time database fully operational")
-            except Exception as test_error:
-                print(f"⚠️ Database test warning: {test_error}")
-                # Continue anyway - connection might work for operations
+            # Test connection if supabase client was created successfully
+            if supabase:
+                try:
+                    test_result = supabase.table('menu_items').select('id').limit(1).execute()
+                    print(f"💾 Real-time database fully operational with {len(test_result.data)} test items")
+                except Exception as test_error:
+                    error_msg = str(test_error)
+                    if "SSLSocket" in error_msg or "SSL" in error_msg:
+                        print(f"🔐 SSL compatibility issue detected: {error_msg}")
+                        print("📁 Database will fall back to local storage for operations")
+                        # Don't set supabase to None here - let individual operations handle the fallback
+                    else:
+                        print(f"⚠️ Database test warning: {test_error}")
+                        print("🔄 Connection might still work for individual operations")
                 
         except Exception as e:
             print(f"❌ Supabase connection failed: {e}")
@@ -160,7 +167,11 @@ def get_menu_items_from_supabase():
         result = supabase.table('menu_items').select('*').execute()
         return result.data
     except Exception as e:
-        print(f"❌ Error loading menu items from Supabase: {e}")
+        error_message = str(e)
+        if "SSLSocket" in error_message or "SSL" in error_message:
+            print(f"🔐 SSL issue loading menu items from Supabase: {error_message}")
+        else:
+            print(f"❌ Error loading menu items from Supabase: {e}")
         return None
 
 def save_menu_item_to_supabase(menu_item):
@@ -282,8 +293,14 @@ def load_data(collection_name):
             return data
             
         except Exception as e:
-            print(f"❌ Supabase error for {collection_name}: {e}")
-            print("📁 Falling back to local storage")
+            error_message = str(e)
+            # Check for specific SSL-related errors
+            if "SSLSocket" in error_message or "SSL" in error_message:
+                print(f"🔐 SSL connection issue for {collection_name}: {error_message}")
+                print("📁 Using local storage instead of Supabase")
+            else:
+                print(f"❌ Supabase error for {collection_name}: {e}")
+                print("📁 Falling back to local storage")
             return load_data_local(collection_name)
     else:
         # Use local file storage
@@ -533,7 +550,11 @@ def add_document(collection_name, document_data):
             })
             
         except Exception as e:
-            print(f"❌ Supabase add error for {collection_name}: {e}")
+            error_message = str(e)
+            if "SSLSocket" in error_message or "SSL" in error_message:
+                print(f"🔐 SSL issue adding to {collection_name}: {error_message}")
+            else:
+                print(f"❌ Supabase add error for {collection_name}: {e}")
             print("📁 Falling back to local storage")
             add_document_local(collection_name, document_data)
     else:
