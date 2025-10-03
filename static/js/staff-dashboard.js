@@ -4,7 +4,6 @@ class StaffDashboard {
     constructor() {
         this.socket = null;
         this.currentPage = 'overview';
-        this.currentOrderFilter = 'all'; // Track current order filter
         this.sidebarOpen = window.innerWidth > 1024;
         this.refreshInterval = null;
         this.lastActivity = Date.now();
@@ -12,12 +11,21 @@ class StaffDashboard {
         this.isScrolling = false;
         this.scrollTimeout = null;
         this.data = {
-            tables: [],
             orders: [],
             alerts: [],
             menu: [],
             analytics: {}
         };
+        
+        // Sound notification system
+        this.sounds = {
+            newOrder: null,
+            statusUpdate: null,
+            customerCall: null,
+            urgent: null
+        };
+        this.soundEnabled = true;
+        this.soundVolume = 0.7;
         
         this.init();
     }
@@ -27,6 +35,7 @@ class StaffDashboard {
         this.bindEvents();
         this.setupActivityTracking();
         this.initializeNavigationNew();
+        this.initializeSounds();
         this.loadInitialData();
         this.startAutoRefresh();
         console.log('✅ Staff Dashboard initialized successfully');
@@ -102,12 +111,6 @@ class StaffDashboard {
                 return;
             }
 
-            // Filter buttons
-            if (e.target.closest('.filter-btn')) {
-                this.applyFilter(e.target.closest('.filter-btn'));
-                return;
-            }
-
             // Action buttons with proper delegation
             this.handleActionButtons(e);
         });
@@ -122,15 +125,15 @@ class StaffDashboard {
                         break;
                     case '2':
                         e.preventDefault();
-                        this.navigateToPageNew('tables');
+                        this.navigateToPageNew('orders');
                         break;
                     case '3':
                         e.preventDefault();
-                        this.navigateToPageNew('orders');
+                        this.navigateToPageNew('alerts');
                         break;
                     case '4':
                         e.preventDefault();
-                        this.navigateToPageNew('alerts');
+                        this.navigateToPageNew('menu');
                         break;
                     case 'r':
                         e.preventDefault();
@@ -143,6 +146,17 @@ class StaffDashboard {
         // Window resize
         window.addEventListener('resize', () => {
             this.handleResize();
+        });
+        
+        // Sound control event listeners
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'sound-toggle') {
+                this.toggleSound();
+            } else if (e.target.id === 'volume-slider') {
+                const volume = parseInt(e.target.value) / 100;
+                this.setSoundVolume(volume);
+                document.getElementById('volume-display').textContent = `${e.target.value}%`;
+            }
         });
     }
 
@@ -181,6 +195,25 @@ class StaffDashboard {
             const alertId = button.getAttribute('data-alert-id');
             this.respondToAlert(alertId);
         }
+        // Sound control actions
+        else if (button.classList.contains('btn-test')) {
+            const soundType = button.getAttribute('data-sound');
+            this.playSound(soundType);
+            button.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                button.style.transform = '';
+            }, 100);
+        }
+        // Sound toggle checkbox
+        else if (e.target.id === 'sound-toggle') {
+            this.toggleSound();
+        }
+        // Volume slider
+        else if (e.target.id === 'volume-slider') {
+            const volume = parseInt(e.target.value) / 100;
+            this.setSoundVolume(volume);
+            document.getElementById('volume-display').textContent = `${e.target.value}%`;
+        }
     }
 
     initializeNavigationNew() {
@@ -191,7 +224,7 @@ class StaffDashboard {
     }
 
     isValidPage(pageName) {
-        const validPages = ['overview', 'tables', 'orders', 'alerts', 'menu', 'analytics', 'settings'];
+        const validPages = ['overview', 'orders', 'alerts', 'menu', 'analytics', 'settings'];
         return validPages.includes(pageName);
     }
 
@@ -225,7 +258,6 @@ class StaffDashboard {
             if (pageTitle) {
                 const titles = {
                     overview: 'Restaurant Overview',
-                    tables: 'Table Management',
                     orders: 'Order Management',
                     alerts: 'Customer Calls & Alerts',
                     menu: 'Menu Management',
@@ -289,7 +321,6 @@ class StaffDashboard {
             this.showLoadingStates();
             
             await Promise.all([
-                this.loadTables(),
                 this.loadOrders(),
                 this.loadAlerts(),
                 this.loadMenu(),
@@ -326,21 +357,6 @@ class StaffDashboard {
                 container.innerHTML = loadingHTML;
             }
         });
-    }
-
-    async loadTables() {
-        try {
-            const response = await fetch('/api/tables');
-            if (response.ok) {
-                this.data.tables = await response.json();
-            } else {
-                // Fallback data
-                this.data.tables = this.generateFallbackTables();
-            }
-        } catch (error) {
-            console.warn('Using fallback table data:', error);
-            this.data.tables = this.generateFallbackTables();
-        }
     }
 
     async loadOrders() {
@@ -399,30 +415,10 @@ class StaffDashboard {
         }
     }
 
-    generateFallbackTables() {
-        // Generate sample table data when API is not available
-        const tables = [];
-        for (let i = 1; i <= 12; i++) {
-            tables.push({
-                id: i,
-                number: i <= 2 ? `VIP-${i}` : `T-${i}`,
-                status: i <= 3 ? 'occupied' : (i <= 5 ? 'needs_attention' : 'empty'),
-                customer_name: i <= 5 ? `Customer ${i}` : null,
-                seated_time: i <= 5 ? new Date(Date.now() - (i * 30 * 60000)).toISOString() : null,
-                order_total: i <= 5 ? (25 + i * 10) : null,
-                alerts: i === 2 || i === 4 ? [{ message: 'Needs assistance' }] : []
-            });
-        }
-        return tables;
-    }
-
     loadPageData(pageName) {
         switch(pageName) {
             case 'overview':
                 this.renderOverview();
-                break;
-            case 'tables':
-                this.renderTables();
                 break;
             case 'orders':
                 this.renderOrders();
@@ -450,27 +446,27 @@ class StaffDashboard {
     }
 
     updateStats() {
-        const occupiedTables = this.data.tables.filter(table => table.status === 'occupied').length;
-        const availableTables = this.data.tables.filter(table => table.status === 'empty').length;
         const pendingOrders = this.data.orders.filter(order => order.status === 'pending').length;
+        const preparingOrders = this.data.orders.filter(order => order.status === 'preparing').length;
+        const readyOrders = this.data.orders.filter(order => order.status === 'ready').length;
         const activeAlerts = this.data.alerts.filter(alert => !alert.resolved).length;
 
         // Update stat cards
-        this.updateStatCard('occupied-tables', occupiedTables);
-        this.updateStatCard('available-tables', availableTables);
-        this.updateStatCard('pending-orders', pendingOrders);
-        this.updateStatCard('active-alerts', activeAlerts);
+        this.updateStatCard('pending-count', pendingOrders);
+        this.updateStatCard('preparing-count', preparingOrders);
+        this.updateStatCard('ready-count', readyOrders);
+        this.updateStatCard('alerts-count', activeAlerts);
     }
 
     updateStatCard(statId, value) {
-        const element = document.querySelector(`[data-stat="${statId}"] .stat-number`);
+        const element = document.getElementById(statId);
         if (element) {
             element.textContent = value;
         }
     }
 
     updateBadges() {
-        const pendingOrders = this.data.orders.filter(order => order.status === 'pending').length;
+        const activeOrders = this.data.orders.filter(order => order.status !== 'completed').length;
         const activeAlerts = this.data.alerts.filter(alert => !alert.resolved).length;
 
         // Update navigation badges
@@ -478,8 +474,8 @@ class StaffDashboard {
         const alertsBadge = document.querySelector('.nav-link[data-page="alerts"] .badge');
 
         if (ordersBadge) {
-            ordersBadge.textContent = pendingOrders;
-            ordersBadge.style.display = pendingOrders > 0 ? 'block' : 'none';
+            ordersBadge.textContent = activeOrders;
+            ordersBadge.style.display = activeOrders > 0 ? 'block' : 'none';
         }
 
         if (alertsBadge) {
@@ -541,83 +537,18 @@ class StaffDashboard {
         activityContainer.innerHTML = activityHTML;
     }
 
-    renderTables() {
-        const tablesContainer = document.querySelector('.tables-grid');
-        if (!tablesContainer) return;
-
-        const tablesHTML = this.data.tables.map(table => {
-            const statusClass = `table-${table.status}`;
-            const statusText = {
-                empty: 'Available',
-                occupied: 'Occupied',
-                needs_attention: 'Needs Attention'
-            };
-
-            return `
-                <div class="table-card ${statusClass}">
-                    <div class="table-header">
-                        <div class="table-number">
-                            <div class="table-status-indicator"></div>
-                            Table ${table.number}
-                        </div>
-                        <span class="table-status">${statusText[table.status]}</span>
-                    </div>
-                    
-                    ${table.status === 'empty' ? `
-                        <div class="empty-table">
-                            <i class="fas fa-chair"></i>
-                            <p>Available for seating</p>
-                        </div>
-                    ` : `
-                        <div class="customer-info">
-                            <p><strong>Customer:</strong> ${table.customer_name || 'N/A'}</p>
-                            <p><strong>Duration:</strong> ${this.calculateDuration(table.seated_time)}</p>
-                            ${table.order_total ? `<p><strong>Order Total:</strong> $${table.order_total.toFixed(2)}</p>` : ''}
-                        </div>
-                        
-                        ${table.alerts && table.alerts.length > 0 ? `
-                            <div class="table-alerts">
-                                ${table.alerts.map(alert => `
-                                    <div class="alert-item">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                        <span>${alert.message}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    `}
-                    
-                    <div class="table-actions">
-                        ${table.status !== 'empty' ? `
-                            <button class="btn-small btn-info btn-view-details" data-table-id="${table.id}">
-                                <i class="fas fa-eye"></i> Details
-                            </button>
-                            <button class="btn-small btn-success btn-clean-table" data-table-id="${table.id}">
-                                <i class="fas fa-broom"></i> Clean
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        tablesContainer.innerHTML = tablesHTML;
-    }
-
     renderOrders() {
         const ordersContainer = document.querySelector('.orders-list');
         if (!ordersContainer) return;
 
-        // Filter orders based on current filter
-        const filteredOrders = this.currentOrderFilter === 'all' 
-            ? this.data.orders 
-            : this.data.orders.filter(order => order.status === this.currentOrderFilter);
+        // Show all orders - no filtering needed
+        const filteredOrders = this.data.orders;
 
         if (filteredOrders.length === 0) {
             ordersContainer.innerHTML = `
                 <div class="no-orders-message" style="text-align: center; padding: 2rem; color: #64748b;">
                     <i class="fas fa-receipt" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                    <p>No ${this.currentOrderFilter === 'all' ? '' : this.currentOrderFilter + ' '}orders found</p>
+                    <p>No orders found</p>
                 </div>
             `;
             return;
@@ -673,9 +604,6 @@ class StaffDashboard {
         `).join('');
 
         ordersContainer.innerHTML = ordersHTML;
-
-        // Update filter button states
-        this.updateOrderFilterButtons();
     }
 
     renderAlerts() {
@@ -826,7 +754,6 @@ class StaffDashboard {
             
             if (response.ok) {
                 this.showNotification('Table cleaned successfully', 'success');
-                this.loadTables();
             }
         } catch (error) {
             console.error('Error cleaning table:', error);
@@ -870,6 +797,32 @@ class StaffDashboard {
         } catch (error) {
             console.error('Error resolving alert:', error);
             this.showNotification('Error resolving alert', 'error');
+        }
+    }
+
+    async clearAllOrders() {
+        if (!confirm('Are you sure you want to clear ALL orders? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/orders/clear-all', {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                this.showNotification('All orders cleared successfully', 'success');
+                await this.loadOrders();
+                if (this.currentPage === 'orders') {
+                    this.renderOrders();
+                }
+                this.updateStats();
+            } else {
+                this.showNotification('Failed to clear orders', 'error');
+            }
+        } catch (error) {
+            console.error('Error clearing all orders:', error);
+            this.showNotification('Error clearing orders', 'error');
         }
     }
 
@@ -933,59 +886,101 @@ class StaffDashboard {
         }
     }
 
-    applyFilter(filterBtn) {
-        // Remove active class from all filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Add active class to clicked button
-        filterBtn.classList.add('active');
-        
-        // Store current filter and re-render orders
-        const filter = filterBtn.dataset.filter;
-        this.currentOrderFilter = filter;
-        
-        // Re-render orders with new filter
-        if (this.currentPage === 'orders') {
-            this.renderOrders();
+    // Sound Notification System
+    initializeSounds() {
+        try {
+            // Create audio contexts for different sound types
+            this.sounds = {
+                newOrder: this.createAudioContext([800, 600, 1000], [0.3, 0.2, 0.4], 'sawtooth'),
+                statusUpdate: this.createAudioContext([500, 700], [0.2, 0.3], 'sine'),
+                customerCall: this.createAudioContext([1200, 900, 1200], [0.3, 0.2, 0.4], 'triangle'),
+                urgent: this.createAudioContext([1500, 200, 1500, 200], [0.2, 0.3, 0.2, 0.4], 'square')
+            };
+            
+            console.log('🔊 Sound notifications initialized');
+        } catch (error) {
+            console.warn('Failed to initialize sounds:', error);
+            this.soundEnabled = false;
         }
     }
 
-    updateOrderFilterButtons() {
-        // Update filter button states to match current filter
-        document.querySelectorAll('.filter-buttons .filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.filter === this.currentOrderFilter) {
-                btn.classList.add('active');
+    createAudioContext(frequencies, durations, waveType = 'sine') {
+        return () => {
+            if (!this.soundEnabled || document.hidden) return;
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const gainNode = audioContext.createGain();
+                gainNode.connect(audioContext.destination);
+                gainNode.gain.value = this.soundVolume;
+
+                let currentTime = audioContext.currentTime;
+                
+                frequencies.forEach((freq, index) => {
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.connect(gainNode);
+                    oscillator.type = waveType;
+                    oscillator.frequency.value = freq;
+                    
+                    const duration = durations[index] || 0.2;
+                    oscillator.start(currentTime);
+                    oscillator.stop(currentTime + duration);
+                    currentTime += duration + 0.1;
+                });
+
+                // Clean up
+                setTimeout(() => audioContext.close().catch(() => {}), 2000);
+            } catch (error) {
+                console.warn('Sound playback failed:', error);
             }
-        });
+        };
+    }
+
+    playSound(soundType) {
+        if (this.soundEnabled && this.sounds[soundType]) {
+            this.sounds[soundType]();
+        }
+    }
+
+    toggleSound() {
+        this.soundEnabled = !this.soundEnabled;
+        this.showNotification(
+            `Sound notifications ${this.soundEnabled ? 'enabled' : 'disabled'}`, 
+            this.soundEnabled ? 'success' : 'info'
+        );
+        return this.soundEnabled;
+    }
+
+    setSoundVolume(volume) {
+        this.soundVolume = Math.max(0, Math.min(1, volume));
+        this.showNotification(`Sound volume set to ${Math.round(this.soundVolume * 100)}%`, 'info');
     }
 
     // Socket Event Handlers
     handleTableUpdate(data) {
         console.log('Table update received:', data);
-        this.loadTables();
         this.updateStats();
     }
 
     handleNewOrder(data) {
         console.log('New order received:', data);
+        this.playSound('newOrder');
         this.loadOrders().then(() => {
             if (this.currentPage === 'orders') {
                 this.renderOrders();
             }
         });
         this.updateStats();
-        this.showNotification(`New order from Table ${data.table_number}`, 'info');
+        this.showNotification(`🔔 New order from Table ${data.table_number}`, 'info');
     }
 
     handleNewAlert(data) {
         console.log('New alert received:', data);
+        this.playSound('customerCall');
         this.data.alerts.push(data);
         this.updateBadges();
         this.updateNotificationCount();
-        this.showNotification(`Customer call from Table ${data.table_number}`, 'warning');
+        this.showNotification(`📞 Customer call from Table ${data.table_number}`, 'warning');
         
         if (this.currentPage === 'alerts') {
             this.renderAlerts();
@@ -994,6 +989,7 @@ class StaffDashboard {
 
     handleOrderUpdate(data) {
         console.log('Order update received:', data);
+        this.playSound('statusUpdate');
         this.loadOrders().then(() => {
             if (this.currentPage === 'orders') {
                 this.renderOrders();
@@ -1004,10 +1000,11 @@ class StaffDashboard {
 
     handleCustomerCall(data) {
         console.log('Customer call received:', data);
+        this.playSound('urgent');
         this.data.alerts.push(data);
         this.updateBadges();
         this.updateNotificationCount();
-        this.showNotification(`Customer call from Table ${data.table_number}`, 'warning');
+        this.showNotification(`🆘 URGENT: Customer call from Table ${data.table_number}`, 'warning');
         
         if (this.currentPage === 'alerts') {
             this.renderAlerts();
@@ -1356,7 +1353,7 @@ async function saveMenuItemChanges() {
         const price = parseFloat(document.getElementById('edit-item-price').value);
         const description = document.getElementById('edit-item-description').value.trim();
         const category = document.getElementById('edit-item-category').value;
-        const imageUrl = document.getElementById('edit-item-image').value.trim();
+        const imageFile = document.getElementById('edit-item-image').files[0];
         
         // Validation
         if (!name) {
@@ -1375,13 +1372,37 @@ async function saveMenuItemChanges() {
         }
         
         // Prepare update data
-        const updateData = {
+        let updateData = {
             name: name,
             price: price,
             description: description,
-            category: category,
-            image_url: imageUrl
+            category: category
         };
+        
+        // Handle image upload if a file is selected
+        if (imageFile) {
+            const formData = new FormData();
+            formData.append('image', imageFile);
+            
+            try {
+                const uploadResponse = await fetch('/api/upload-menu-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const uploadResult = await uploadResponse.json();
+                
+                if (uploadResult.status === 'success') {
+                    updateData.image_url = uploadResult.image_url;
+                } else {
+                    showNotification('Failed to upload image: ' + uploadResult.message, 'error');
+                    return;
+                }
+            } catch (uploadError) {
+                showNotification('Error uploading image', 'error');
+                return;
+            }
+        }
         
         // Send update request
         const response = await fetch(`/api/menu-item/${itemId}`, {
@@ -1449,20 +1470,33 @@ async function refreshMenu() {
     }
 }
 
+async function clearAllOrders() {
+    if (window.dashboard) {
+        await window.dashboard.clearAllOrders();
+    }
+}
+
 // Image preview functionality for edit modal
 document.addEventListener('DOMContentLoaded', () => {
-    const imageUrlInput = document.getElementById('edit-item-image');
+    const imageFileInput = document.getElementById('edit-item-image');
     const imagePreview = document.getElementById('edit-image-preview');
     
-    if (imageUrlInput && imagePreview) {
-        imageUrlInput.addEventListener('input', (e) => {
-            const url = e.target.value.trim();
-            if (url) {
-                imagePreview.src = url;
-                imagePreview.style.display = 'block';
-                imagePreview.onerror = () => {
+    if (imageFileInput && imagePreview) {
+        imageFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // Check if file is an image
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagePreview.src = e.target.result;
+                        imagePreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
                     imagePreview.style.display = 'none';
-                };
+                    showNotification('Please select a valid image file', 'error');
+                }
             } else {
                 imagePreview.style.display = 'none';
             }

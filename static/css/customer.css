@@ -703,3 +703,221 @@ body {
 .bounce {
     animation: bounce 1s ease infinite;
 }
+
+/* Order Status Section */
+.order-status-section {
+    background: white;
+    margin: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.status-header {
+    background: linear-gradient(135deg, #27AE60, #2ECC71);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.status-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.status-header i {
+    margin-right: 8px;
+}
+
+.toggle-status-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.toggle-status-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.status-content {
+    padding: 20px;
+}
+
+/* Order Progress */
+.order-progress {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.order-progress::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: #e2e8f0;
+    z-index: 1;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+    position: relative;
+    z-index: 2;
+}
+
+.step-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+.progress-step.active .step-icon {
+    background: #2ECC71;
+    color: white;
+    transform: scale(1.1);
+}
+
+.progress-step.completed .step-icon {
+    background: #27AE60;
+    color: white;
+}
+
+.progress-step span {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.progress-step.active span {
+    color: #2ECC71;
+    font-weight: 600;
+}
+
+.progress-step.completed span {
+    color: #27AE60;
+}
+
+/* Current Orders */
+.current-orders {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 15px;
+}
+
+.order-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.order-item:last-child {
+    margin-bottom: 0;
+}
+
+.order-item.status-preparing {
+    border-color: #F39C12;
+    background: #fef9e7;
+}
+
+.order-item.status-ready {
+    border-color: #27AE60;
+    background: #f0fdf4;
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.order-id {
+    font-weight: 600;
+    color: #1a1a1a;
+    font-size: 0.95rem;
+}
+
+.order-time {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.order-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-count {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.order-status {
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.status-preparing .order-status {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status-ready .order-status {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+    .order-status-section {
+        margin: 10px;
+    }
+    
+    .order-progress {
+        margin-bottom: 15px;
+    }
+    
+    .step-icon {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .progress-step span {
+        font-size: 0.8rem;
+    }
+    
+    .order-item {
+        padding: 12px;
+    }
+}

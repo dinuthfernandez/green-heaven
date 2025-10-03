@@ -30,13 +30,6 @@
                             <span>Overview</span>
                         </a>
                     </li>
-                    <li class="nav-item" data-page="tables">
-                        <a href="#tables" class="nav-link" data-page="tables">
-                            <i class="fas fa-table"></i>
-                            <span>Table Management</span>
-                            <span class="badge" id="tables-badge">0</span>
-                        </a>
-                    </li>
                     <li class="nav-item" data-page="orders">
                         <a href="#orders" class="nav-link" data-page="orders">
                             <i class="fas fa-receipt"></i>
@@ -121,31 +114,31 @@
                                 <p class="section-subtitle">Real-time overview of restaurant operations</p>
                             </div>
                             <div class="stats-cards">
-                                <div class="stat-card occupied">
+                                <div class="stat-card orders">
                                     <div class="stat-icon">
-                                        <i class="fas fa-users"></i>
+                                        <i class="fas fa-plus-circle"></i>
                                     </div>
                                     <div class="stat-info">
-                                        <span class="stat-number" id="occupied-count">0</span>
-                                        <span class="stat-label">Occupied Tables</span>
-                                    </div>
-                                </div>
-                                <div class="stat-card available">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-chair"></i>
-                                    </div>
-                                    <div class="stat-info">
-                                        <span class="stat-number" id="available-count">0</span>
-                                        <span class="stat-label">Available Tables</span>
+                                        <span class="stat-number" id="pending-count">0</span>
+                                        <span class="stat-label">New Orders</span>
                                     </div>
                                 </div>
                                 <div class="stat-card orders">
                                     <div class="stat-icon">
-                                        <i class="fas fa-receipt"></i>
+                                        <i class="fas fa-clock"></i>
                                     </div>
                                     <div class="stat-info">
-                                        <span class="stat-number" id="orders-count">0</span>
-                                        <span class="stat-label">Active Orders</span>
+                                        <span class="stat-number" id="preparing-count">0</span>
+                                        <span class="stat-label">Preparing Orders</span>
+                                    </div>
+                                </div>
+                                <div class="stat-card available">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-number" id="ready-count">0</span>
+                                        <span class="stat-label">Ready Orders</span>
                                     </div>
                                 </div>
                                 <div class="stat-card alerts">
@@ -187,10 +180,10 @@
                                 <p class="section-subtitle">Common tasks for efficient restaurant management</p>
                             </div>
                             <div class="action-buttons">
-                                <button class="action-btn primary" onclick="window.dashboard.navigateToPageNew('tables')" title="View and manage all table statuses">
-                                    <i class="fas fa-table"></i>
-                                    <span>Manage Tables</span>
-                                    <small>View all table statuses</small>
+                                <button class="action-btn primary" onclick="window.dashboard.navigateToPageNew('orders')" title="View and manage all orders">
+                                    <i class="fas fa-receipt"></i>
+                                    <span>Manage Orders</span>
+                                    <small>View all orders</small>
                                 </button>
                                 <button class="action-btn secondary" onclick="window.dashboard.navigateToPageNew('menu')" title="Update menu items and pricing">
                                     <i class="fas fa-utensils"></i>
@@ -209,28 +202,8 @@
                                 </button>
                             </div>
                             <div class="keyboard-shortcuts">
-                                <p><strong>💡 Tip:</strong> Use <kbd>Ctrl+1</kbd> for Overview, <kbd>Ctrl+2</kbd> for Tables, <kbd>Ctrl+3</kbd> for Orders, <kbd>Ctrl+R</kbd> to refresh</p>
+                                <p><strong>💡 Tip:</strong> Use <kbd>Ctrl+1</kbd> for Overview, <kbd>Ctrl+2</kbd> for Orders, <kbd>Ctrl+3</kbd> for Alerts, <kbd>Ctrl+R</kbd> to refresh</p>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tables Page -->
-                <div class="page-content" id="tables-page">
-                    <div class="page-header">
-                        <h3>Table Management</h3>
-                        <div class="page-actions">
-                            <button class="btn-secondary" onclick="refreshTables()">
-                                <i class="fas fa-sync-alt"></i>
-                                Refresh Tables
-                            </button>
-                        </div>
-                    </div>
-                    <div class="tables-grid" id="tables-grid">
-                        <!-- Tables will be loaded dynamically via JavaScript -->
-                        <div class="loading-message">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <p>Loading tables...</p>
                         </div>
                     </div>
                 </div>
@@ -238,14 +211,12 @@
                 <!-- Orders Page -->
                 <div class="page-content" id="orders-page">
                     <div class="page-header">
-                        <h3>Order Management</h3>
+                        <h3>Order Management - All Orders</h3>
                         <div class="page-actions">
-                            <div class="filter-buttons">
-                                <button class="filter-btn active" data-filter="all">All Orders</button>
-                                <button class="filter-btn" data-filter="pending">Pending</button>
-                                <button class="filter-btn" data-filter="preparing">Preparing</button>
-                                <button class="filter-btn" data-filter="ready">Ready</button>
-                            </div>
+                            <button class="btn-danger" onclick="clearAllOrders()">
+                                <i class="fas fa-trash"></i>
+                                Clear All Orders
+                            </button>
                         </div>
                     </div>
                     <div class="orders-list" id="orders-list">
@@ -355,9 +326,9 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="edit-item-image">Image URL</label>
-                                    <input type="url" id="edit-item-image" placeholder="https://example.com/image.jpg">
-                                    <small>Paste a direct link to the food image</small>
+                                    <label for="edit-item-image">Item Image</label>
+                                    <input type="file" id="edit-item-image" accept="image/*">
+                                    <small>Upload a food image (JPG, PNG, GIF, WebP)</small>
                                 </div>
                                 
                                 <div class="image-preview-container">
@@ -386,7 +357,7 @@
                     <div class="analytics-grid">
                         <div class="analytics-card">
                             <h4>Today's Sales</h4>
-                            <div class="metric-large">$1,250.00</div>
+                            <div class="metric-large">LKR 1,250.00</div>
                             <div class="metric-change positive">+12% from yesterday</div>
                         </div>
                         <div class="analytics-card">
@@ -396,7 +367,7 @@
                         </div>
                         <div class="analytics-card">
                             <h4>Average Order Value</h4>
-                            <div class="metric-large">$27.78</div>
+                            <div class="metric-large">LKR 27.78</div>
                             <div class="metric-change negative">-3% from yesterday</div>
                         </div>
                         <div class="analytics-card">
@@ -426,7 +397,27 @@
                         <div class="settings-card">
                             <h4>Staff Notifications</h4>
                             <p>Customize alert preferences and sounds</p>
-                            <button class="btn-secondary">Notification Settings</button>
+                            
+                            <div class="sound-controls">
+                                <div class="control-group">
+                                    <label>
+                                        <input type="checkbox" id="sound-toggle" checked>
+                                        Enable Sound Notifications
+                                    </label>
+                                </div>
+                                
+                                <div class="control-group">
+                                    <label for="volume-slider">Volume: <span id="volume-display">70%</span></label>
+                                    <input type="range" id="volume-slider" min="0" max="100" value="70" class="volume-slider">
+                                </div>
+                                
+                                <div class="sound-test-buttons">
+                                    <button class="btn-test" data-sound="newOrder">Test New Order</button>
+                                    <button class="btn-test" data-sound="statusUpdate">Test Status Update</button>
+                                    <button class="btn-test" data-sound="customerCall">Test Customer Call</button>
+                                    <button class="btn-test" data-sound="urgent">Test Urgent Alert</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
